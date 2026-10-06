@@ -5,16 +5,17 @@
 - Exchange (dex) name: `par`. Collateral: USDPR (token 3032).
 - 10 markets: par:BTC, par:ETH, par:HYPE, par:SP500, par:EWY, par:EWJ,
   par:BRENT, par:GOLD, par:USDEUR, par:USDJPY.
-- Scoring (each min-max normalized across teams; weights unknown):
+- Scoring (each min-max normalized across teams):
   1. Total net return, marked to oracle at end of live phase.
   2. Low std dev of daily equity returns (steadier = better).
   3. Jury score on a 2-4 page technical report (AI/ML depth, originality,
      rigor/reproducibility, clarity).
+- Score weights: profit 40%, low daily-return std dev 30%, report 30%.
 - Rules: trade on >= 10 distinct days, hit a minimum notional volume,
   entries must be algorithmic. No wash trading, self-crossing, collusion,
   or attacks on exchange/oracle. Organizer market-making bots quote in all
   markets. Per-market position limits. Fixed bankroll, no top-ups.
-- Unknown: competition length, score weights, min volume, position
+- Unknown: competition length, min volume, position
   limits, fees, whether outside data is allowed, whether practice
   trades count.
 
