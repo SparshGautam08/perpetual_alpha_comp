@@ -1,0 +1,7 @@
+*.key
+.env
+.venv/
+data/
+historical/
+server_data/
+__pycache__/
