@@ -205,7 +205,6 @@ fill quality vs oracle. **Reproduce:** `python test_trade.py plan|open|status|cl
 ## Open questions for organizers
 - Does daily equity for the std score use oracle or mark?
 - Fees on par; maker rebate?
-- Position limits, minimum volume, competition dates.
 - Is the balance reset to 1,000,000 USDPR at the start, and do practice
   trades count?
 - Is trading against stale bot quotes allowed?
