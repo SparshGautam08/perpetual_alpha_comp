@@ -15,11 +15,10 @@
   entries must be algorithmic. No wash trading, self-crossing, collusion,
   or attacks on exchange/oracle. Organizer market-making bots quote in all
   markets. Per-market position limits. Fixed bankroll, no top-ups.
+- Outside data IS allowed (confirmed by organizers Oct 7), e.g. CME
+  futures, prediction markets, mainnet Hyperliquid data.
 - Unknown: competition length, min volume, position
-  limits, fees, whether outside data is allowed, whether practice
-  trades count.
-- Asked organizers: is outside data allowed (e.g. CME futures,
-  prediction markets)? Awaiting answer.
+  limits, fees, whether practice trades count.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
@@ -64,6 +63,11 @@
   - Oct 6 1:48 AM to 1:50 PM CT (06:48 to 18:50 UTC).
   - Oct 7 ~1:00 to 1:13 PM CT (~18:00 to 18:13 UTC).
 - Check: tail ~/recorder.log, ls -lh ~/data
+- Second recorder (websocket, started Oct 7): record_ws.py writes to
+  ~/data_ws/ (ctxws_ ~1s oracle/mark/funding on change, bbo_ best bid/ask
+  on every change with exchange time, l2_ full book on change). Log:
+  ~/record_ws.log. Also covered by ~/watchdog.sh. Old 5s recorder kept
+  running in parallel for comparison.
 - Download: tar czf data.tar.gz data, then the SSH window's "Download file".
 - About 50 MB/day.
 
