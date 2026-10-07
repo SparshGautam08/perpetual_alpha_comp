@@ -18,6 +18,8 @@
 - Unknown: competition length, min volume, position
   limits, fees, whether outside data is allowed, whether practice
   trades count.
+- Asked organizers: is outside data allowed (e.g. CME futures,
+  prediction markets)? Awaiting answer.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
@@ -56,7 +58,11 @@
 - VM `recorder` (e2-micro, us-central1, Ubuntu 26.04), personal Google
   account, project "trading comp". Running since ~Oct 5, 10pm CT.
 - No sudo on the VM. Python 3.12 venv via uv at ~/venv.
-- Runs via nohup; a cron watchdog every 5 min restarts it.
+- Runs via nohup; ~/watchdog.sh on cron every 5 min restarts it (fixed
+  Oct 7 after the gaps below).
+- Data gaps (no rows recorded; CT = UTC-5):
+  - Oct 6 1:48 AM to 1:50 PM CT (06:48 to 18:50 UTC).
+  - Oct 7 ~1:00 to 1:13 PM CT (~18:00 to 18:13 UTC).
 - Check: tail ~/recorder.log, ls -lh ~/data
 - Download: tar czf data.tar.gz data, then the SSH window's "Download file".
 - About 50 MB/day.
