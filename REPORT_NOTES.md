@@ -254,6 +254,17 @@ levels within the limit), charges 9 bp and hourly funding.
 **Open:** live mode not yet run; reconnection/long-run stability untested;
 strategy is a baseline (no funding awareness, no drift signal yet).
 
+## E12. Mainnet price recording (Oct 7, infrastructure)
+**Why:** par's oracle is a median across venues including Hyperliquid
+mainnet, and par's bot quotes lag the oracle by 10-60 s (E7-E8). To test
+whether mainnet moves first, we need mainnet and par recorded at the same
+moments; the historical candles are hourly and can't show this.
+**Did:** `record_ws.py --venue mainnet`: per market, mainnet oracle/mark/
+mid/funding (~1 s) and best bid/ask price changes with exchange time. Size
+-only book updates skipped (831 -> 87 rows per 45 s); ~55 MB/day.
+Mainnet's full book not recorded (updates every block).
+**Open:** lead-lag analysis once a few days are recorded.
+
 ---
 
 ## Open questions for organizers

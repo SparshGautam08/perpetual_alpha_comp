@@ -7,7 +7,8 @@ polling of record_market_data.py with pushed updates:
                      Pushed ~every 1 s; a row is written when any of them
                      changes.
   bbo_<date>.csv   : best bid / best ask. Pushed by the exchange the moment
-                     either changes, with the exchange timestamp.
+                     either changes, with the exchange timestamp. (mainnet:
+                     only rows where a price changed, not just a size.)
   l2_<date>.csv    : full order book, up to LEVELS per side (the par book has
                      ~8). Pushed ~every 5 s; a row is written only when the
                      book changed.
@@ -19,9 +20,14 @@ Reliability: reconnects with backoff on any error or close, and forces a
 reconnect if no message arrives for STALE_S seconds. Status line every
 10 minutes. Stop with Ctrl+C or SIGTERM.
 
+With --venue mainnet it records the real Hyperliquid markets that par's
+markets copy (BTC, xyz:SP500, ...), as a lead signal for par's oracle. Only
+ctxws and bbo are written (mainnet's full book updates every block and is
+too big). Files get an mn_ prefix. Run it as a separate process.
+
 Usage:
-  python record_ws.py                 # writes to ./data_ws/
-  python record_ws.py --out data_ws
+  python record_ws.py                                   # par, ./data_ws/
+  python record_ws.py --venue mainnet --out data_mainnet
 Needs: requests, websocket-client
 """
 import argparse
@@ -36,17 +42,26 @@ from datetime import datetime, timezone
 import requests
 import websocket
 
-BASE_URL = os.environ.get("HL_BASE_URL", "https://api.hyperliquid-testnet.xyz")
-DEX = os.environ.get("HL_DEX", "par")
-WS_URL = "wss" + BASE_URL[len("https"):] + "/ws"
 LEVELS = 20        # l2Book returns at most 20 levels per side
 STALE_S = 30       # no message this long -> reconnect
 PING_S = 45        # server drops idle connections after 60 s
+# par market -> Hyperliquid mainnet market it copies (historical/README.md)
+MAINNET_COINS = ["BTC", "ETH", "HYPE", "xyz:SP500", "xyz:EWY", "xyz:EWJ",
+                 "xyz:BRENTOIL", "xyz:GOLD", "xyz:EUR", "xyz:JPY"]
 
 p = argparse.ArgumentParser()
-p.add_argument("--out", default="data_ws", help="output folder")
+p.add_argument("--venue", choices=["par", "mainnet"], default="par")
+p.add_argument("--out", default=None, help="output folder (default data_ws / data_mainnet)")
 args = p.parse_args()
+MAINNET = args.venue == "mainnet"
+args.out = args.out or ("data_mainnet" if MAINNET else "data_ws")
 os.makedirs(args.out, exist_ok=True)
+BASE_URL = ("https://api.hyperliquid.xyz" if MAINNET
+            else os.environ.get("HL_BASE_URL", "https://api.hyperliquid-testnet.xyz"))
+DEX = os.environ.get("HL_DEX", "par")
+WS_URL = "wss" + BASE_URL[len("https"):] + "/ws"
+FEEDS = ("activeAssetCtx", "bbo") if MAINNET else ("activeAssetCtx", "bbo", "l2Book")
+PREFIX = "mn_" if MAINNET else ""
 
 
 def log(msg):
@@ -88,8 +103,8 @@ class DailyCsv:
 
 CTX_KEYS = ["oraclePx", "markPx", "midPx", "funding", "premium", "openInterest",
             "dayNtlVlm"]
-ctx_csv = DailyCsv("ctxws", ["recv_ms", "coin"] + CTX_KEYS + ["impactBid", "impactAsk"])
-bbo_csv = DailyCsv("bbo", ["recv_ms", "ex_ms", "coin", "bid_px", "bid_sz", "bid_n",
+ctx_csv = DailyCsv(PREFIX + "ctxws", ["recv_ms", "coin"] + CTX_KEYS + ["impactBid", "impactAsk"])
+bbo_csv = DailyCsv(PREFIX + "bbo", ["recv_ms", "ex_ms", "coin", "bid_px", "bid_sz", "bid_n",
                            "ask_px", "ask_sz", "ask_n"])
 l2_fields = ["recv_ms", "ex_ms", "coin"]
 for side in ("bid", "ask"):
@@ -97,7 +112,7 @@ for side in ("bid", "ask"):
         l2_fields += [f"{side}{i}_px", f"{side}{i}_sz", f"{side}{i}_n"]
 l2_csv = DailyCsv("l2", l2_fields)
 
-last_ctx, last_l2 = {}, {}     # coin -> last written values, to skip repeats
+last_ctx, last_l2, last_bbo_px = {}, {}, {}   # coin -> last written values
 counts = {"ctx": 0, "bbo": 0, "l2": 0}
 last_msg = time.time()
 running = True
@@ -125,6 +140,11 @@ def on_message(_ws, message):
     elif ch == "bbo":
         bid, ask = d.get("bbo") or [None, None]
         bid, ask = bid or {}, ask or {}     # a side can be empty (None)
+        if MAINNET:   # busy book: keep price changes only, skip size-only updates
+            px = (bid.get("px"), ask.get("px"))
+            if last_bbo_px.get(d["coin"]) == px:
+                return
+            last_bbo_px[d["coin"]] = px
         bbo_csv.write({"recv_ms": now, "ex_ms": d.get("time"), "coin": d["coin"],
                        "bid_px": bid.get("px"), "bid_sz": bid.get("sz"), "bid_n": bid.get("n"),
                        "ask_px": ask.get("px"), "ask_sz": ask.get("sz"), "ask_n": ask.get("n")})
@@ -149,10 +169,10 @@ def run_once(coins):
     """One websocket session. Returns when the connection closes or goes stale."""
     def on_open(ws):
         for c in coins:
-            for t in ("activeAssetCtx", "bbo", "l2Book"):
+            for t in FEEDS:
                 ws.send(json.dumps({"method": "subscribe",
                                     "subscription": {"type": t, "coin": c}}))
-        log(f"Connected, subscribed to {len(coins) * 3} feeds")
+        log(f"Connected, subscribed to {len(coins) * len(FEEDS)} feeds")
 
     ws = websocket.WebSocketApp(WS_URL, on_open=on_open, on_message=on_message,
                                 on_error=lambda _w, e: log(f"Websocket error: {e}"))
@@ -193,9 +213,13 @@ def stop(*_):
 def main():
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
-    meta = requests.post(BASE_URL + "/info", json={"type": "meta", "dex": DEX}, timeout=10).json()
-    coins = [a["name"] for a in meta["universe"]]
-    log(f"Recording {len(coins)} markets on '{DEX}' via {WS_URL} to ./{args.out}/")
+    if MAINNET:
+        coins = MAINNET_COINS
+    else:
+        meta = requests.post(BASE_URL + "/info", json={"type": "meta", "dex": DEX},
+                             timeout=10).json()
+        coins = [a["name"] for a in meta["universe"]]
+    log(f"Recording {len(coins)} {args.venue} markets via {WS_URL} to ./{args.out}/")
     threading.Thread(target=status_loop, daemon=True).start()
     backoff = 1
     while running:

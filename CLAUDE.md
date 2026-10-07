@@ -80,6 +80,12 @@
   on every change with exchange time, l2_ full book on change). Log:
   ~/record_ws.log. Also covered by ~/watchdog.sh. Old 5s recorder kept
   running in parallel for comparison.
+- Third recorder (Oct 7): record_ws.py --venue mainnet --out ~/data_mainnet
+  records the real Hyperliquid markets par copies (BTC, xyz:SP500, ...):
+  mn_ctxws_ (oracle/mark/mid/funding ~1s) and mn_bbo_ (best bid/ask price
+  changes). Lead signal for par's oracle. ~55 MB/day. Log ~/record_mn.log.
+  Watchdog patterns must stay distinct: "record_ws.py --out" (par) vs
+  "record_ws.py --venue mainnet".
 - Download: tar czf data.tar.gz data, then the SSH window's "Download file".
 - About 50 MB/day.
 
