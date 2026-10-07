@@ -84,6 +84,11 @@
   reproducibility; focused ML (regime detection, bet sizing).
 - Reliability: the bot must reconnect, handle errors and alert us.
 
+## Experiment log
+- REPORT_NOTES.md records every experiment: what we tried, how to
+  reproduce it, results, and what we learned, including failures and
+  dropped claims. Update it after every step, before committing.
+
 ## Week 1 plan (Oct 5-11)
 - Roles: infra (me), data/research, strategy/backtesting, risk/report.
 - Next: load the historical dataset, build a backtester with fees, run

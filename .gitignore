@@ -6,3 +6,4 @@ historical/
 server_data/
 __pycache__/
 results/
+test_trade_log.jsonl
