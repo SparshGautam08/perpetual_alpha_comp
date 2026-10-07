@@ -196,7 +196,7 @@ Any websocket-based bot feed must expect this.
 **Open:** `live_market.py` needs a loader for the new file format; gaps of
 1-2 s every ~11 min should be marked like the polling gaps.
 
-## E10. Live test trade (Oct 7, in progress)
+## E10. Live test trade (Oct 7)
 **Tried:** $1,000 long par:BTC to confirm fee rate, funding payments and
 fill quality vs oracle. **Reproduce:** `python test_trade.py plan|open|status|close|report`
 
@@ -212,7 +212,16 @@ fill quality vs oracle. **Reproduce:** `python test_trade.py plan|open|status|cl
 - In unified mode the USDPR "total" already includes unrealized P&L at
   mark (1,000,000 - 0.90 fee - 0.64 uPnL = 999,998.46). Scored equity at
   oracle = total - uPnL@mark + uPnL@oracle (`balance.py`).
-- Funding payments, close and fills vs oracle: _pending_
+- Closed Oct 7 ~22:03 UTC: sold 0.012 at 83,254. Net -$2.77 = price
+  -$1.06, fees -$1.80 (9.0 bp on both sides), funding +$0.09.
+  Balance 999,997.23 (pre-competition; balances reset at the start).
+- **Funding is paid hourly as position x oracle x rate**, sign as
+  expected: 20:00 UTC rate -0.0101%/h, we (long) received $0.101; 21:00
+  -0.0020%/h, +$0.020; 22:00 +0.0034%/h, paid $0.034.
+- **Both fills beat the oracle:** bought 14.4 bp below it, sold 7.7 bp
+  above it, because the bot's quotes lagged the oracle (E7). Two fills
+  prove nothing, but it is a live example of the drift effect.
+- Order flow worked end to end (IoC fill, position, close); no surprises.
 
 ## E11. Trading bot v1, paper mode (Oct 7)
 **Built:** `bot/` package. Strategy = risk parity on CLEAN7 at 0.5 x 10% vol
