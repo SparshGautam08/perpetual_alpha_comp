@@ -187,8 +187,14 @@ best bid/ask on every change with exchange timestamp, full book on change.
 Tested 75 s locally (222 ctx, 8 bbo, 25 book rows). Deployed on the VM
 alongside the old recorder; watchdog covers both.
 
-**Open:** reconnection after a real network drop not yet observed;
-`live_market.py` needs a loader for the new file format.
+**Observed on the VM (Oct 7):** the server closes the websocket with
+"code 1000: Expired" every ~11 minutes (19:15, 19:26, 19:37, 19:48 UTC),
+even though we ping every 45 s, so it looks like a fixed session lifetime.
+The recorder reconnects in 1-2 s each time, losing ~0.2% of the timeline.
+Any websocket-based bot feed must expect this.
+
+**Open:** `live_market.py` needs a loader for the new file format; gaps of
+1-2 s every ~11 min should be marked like the polling gaps.
 
 ## E10. Live test trade (Oct 7, in progress)
 **Tried:** $1,000 long par:BTC to confirm fee rate, funding payments and
@@ -198,14 +204,54 @@ fill quality vs oracle. **Reproduce:** `python test_trade.py plan|open|status|cl
 ~19:20 UTC. Position confirmed on the exchange. Funding then quoted at
 -128%/yr (longs receive). Waiting for 3 hourly funding payments, then close.
 
-**Results:** _pending_
+**Results so far**
+- **Taker fee is 9.0 bp** ($0.90 on $1,000), not the 5 bp assumed in E2-E7.
+  `costs.py` updated to 9.0. Round trip at $50k is ~38 bp vs oracle, not
+  30. Backtest results in E2-E5 are therefore slightly optimistic; rerun
+  pending. Maker fee still unknown.
+- In unified mode the USDPR "total" already includes unrealized P&L at
+  mark (1,000,000 - 0.90 fee - 0.64 uPnL = 999,998.46). Scored equity at
+  oracle = total - uPnL@mark + uPnL@oracle (`balance.py`).
+- Funding payments, close and fills vs oracle: _pending_
+
+## E11. Trading bot v1, paper mode (Oct 7)
+**Built:** `bot/` package. Strategy = risk parity on CLEAN7 at 0.5 x 10% vol
+target (E4-E5), weights from the backtester's own `risk_parity()` on 40 days
+of mainnet hourly candles (outside data). Daily rebalance at 00 UTC,
+1% no-trade band, IoC orders capped at 15 bp from mid, $25k slices, caps
+of 30% per market and 1.5x gross, daily loss stop -2%, STOP/PAUSE files,
+ntfy phone alerts. Paper broker fills against the live par book (all
+levels within the limit), charges 9 bp and hourly funding.
+**Reproduce:** `python -m bot.main --once --rebalance-now` (paper)
+
+**Results (first paper rebalance, Oct 7 ~19:48 UTC)**
+- Targets: SP500 12.9%, GOLD 6.1%, EWY 4.1%, BTC 3.9%, ETH 3.2%, BRENT
+  2.9%, HYPE 2.0% (gross ~0.35).
+- Entering ~$350k cost $738 at oracle (0.07% of equity): $315 fees plus
+  fills ~10 bp above oracle (GOLD ~20 bp, BTC ~0.4 bp).
+- Kill switch flattened all 7 positions; a simulated -4.8% day triggered
+  the loss stop, flattened, and blocked trading for the rest of the UTC day.
+
+**Bugs found in testing (fixed)**
+- A $32 order sat in front of the bot's $50k BRENT level; paper fills only
+  used the first level, so the bot sent 139 tiny orders. Fixed: paper fills
+  walk all levels within the limit; execution stops a market when a slice
+  fills < 50%; max 20 slices per market.
+- Price limit was relative to the best quote (the tiny order), so the real
+  level was out of reach. Fixed: limit relative to mid (15 bp).
+- Summary reported "unfilled: none" while BRENT was $28.7k short; now
+  reports shortfall per market.
+
+**Open:** live mode not yet run; reconnection/long-run stability untested;
+strategy is a baseline (no funding awareness, no drift signal yet).
 
 ---
 
 ## Open questions for organizers
 - Does daily equity for the std score use oracle or mark?
 - Fees on par; maker rebate?
-- Is the balance reset to 1,000,000 USDPR at the start, and do practice
-  trades count?
+- ~~Is the balance reset at the start?~~ Yes (confirmed Oct 7).
+- ~~Do practice trades count toward the 10 trading days / minimum volume?~~
+  No, those rules apply only to the live competition (confirmed Oct 7).
 - Is trading against stale bot quotes allowed?
 - ~~Is outside data allowed?~~ Yes (confirmed Oct 7).

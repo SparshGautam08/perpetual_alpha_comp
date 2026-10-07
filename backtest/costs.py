@@ -5,9 +5,10 @@ UTC, data/ctx_2026-10-06.csv and data/book_2026-10-06.csv). Replace with
 the server recordings once analyzed.
 """
 
-# Exchange fee per side, in bp of traded notional. Hyperliquid's base taker
-# fee is 4.5 bp; par's actual fee is unknown (asked the organizers).
-FEE_BPS = 5.0
+# Exchange fee per side, in bp of traded notional. MEASURED Oct 7 from our
+# test trade: taker fee 9.0 bp on par (higher than Hyperliquid's base 4.5 bp).
+# Maker fee (resting orders) not measured yet.
+FEE_BPS = 9.0
 
 # Half the bid-ask spread, in bp: what crossing the book costs vs the mid.
 # The organizer market-making bots quote ~20 bp wide in every market.

@@ -17,8 +17,12 @@
   markets. Per-market position limits. Fixed bankroll, no top-ups.
 - Outside data IS allowed (confirmed by organizers Oct 7), e.g. CME
   futures, prediction markets, mainnet Hyperliquid data.
-- Unknown: competition length, min volume, position
-  limits, fees, whether practice trades count.
+- Balances reset when the live competition starts (confirmed Oct 7), so
+  pre-competition test trades don't affect the scored bankroll.
+- Practice trades don't count toward the 10-trading-day or minimum-volume
+  rules; those apply only to the live competition (confirmed Oct 7).
+- Fees: taker 9.0 bp on par (measured Oct 7 test trade). Maker unknown.
+- Unknown: competition length, min volume, position limits, maker fee.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
@@ -49,6 +53,14 @@
   data/book_<UTC date>.csv (top 5 book levels per side).
 - data/: first ~1 hour of recorded data from the laptop (Oct 5 evening).
 - historical/: organizers' historical/backtesting dataset.
+- balance.py: read-only balance, positions, equity at mark and at oracle.
+- test_trade.py: small capped test trade (plan/open/status/close/report).
+- bot/: trading bot. Paper mode by default: python -m bot.main
+  (--rebalance-now, --once). Live needs BOT_LIVE=yes, --mode live and
+  HL_API_KEY_FILE. Settings in bot/config.py (env overrides). Kill switch:
+  touch bot/state/STOP (flatten + exit); bot/state/PAUSE (no orders).
+  Alerts via ntfy (NTFY_TOPIC env). Will run on its own new small VM.
+- backtest/: backtester, baselines, leverage study, live market analysis.
 - SDK: hyperliquid-python-sdk==0.24.0, Python venv in .venv.
   The SDK's meta_and_asset_ctxs() has no dex arg; post
   {"type":"metaAndAssetCtxs","dex":"par"} directly.
