@@ -1,5 +1,5 @@
 hyperliquid-python-sdk==0.24.0
-pandas
-numpy
-requests
-websocket-client
+pandas==3.0.6
+numpy==2.5.3
+requests==2.34.2
+websocket-client==1.9.2
