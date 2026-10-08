@@ -24,9 +24,9 @@ from datetime import datetime, timezone
 from . import config
 from .alerts import alert
 from .broker import LiveBroker, PaperBroker
-from .execution import flatten, rebalance
+from .execution import flatten, rebalance, trade_to
 from .market import snapshot
-from .strategy import RiskParity
+from .strategy import Drift, RiskParity
 
 log = logging.getLogger("bot")
 
@@ -59,6 +59,18 @@ class State:
 
 def held_markets(broker, extra) -> list[str]:
     return sorted(set(config.MARKETS) | set(broker.positions()) | set(extra))
+
+
+def drift_step(broker, strategy, quotes, state) -> None:
+    """Drift strategy: check every market every loop, trade on entries/exits."""
+    for coin, (target, reason) in strategy.tick(quotes, broker.positions(), time.time()).items():
+        log.info(f"DRIFT {coin}: {reason} -> target ${target:,.0f}")
+        fills = trade_to(broker, coin, target, quotes)
+        done = sum(f["filled"] for f in fills) > 0
+        if done:
+            strategy.record(coin, time.time(), opened=target != 0)
+            alert(f"drift {'entry' if target else 'exit'} {coin}", reason, priority="low",
+                  key=f"drift-{coin}", every_s=60)
 
 
 def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
@@ -100,6 +112,14 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
     if config.PAUSE_FILE.exists():
         return True
 
+    if isinstance(strategy, Drift):
+        quotes = snapshot(held_markets(broker, Drift.MARKETS))
+        drift_step(broker, strategy, quotes, state)
+        equity = broker.equity_oracle(quotes)
+        log.info(f"HEARTBEAT {broker.mode} {strategy.name} equity@oracle {equity:,.2f} "
+                 f"positions {json.dumps({k: round(v, 6) for k, v in broker.positions().items()})}")
+        return True
+
     due = (now.hour == config.REBAL_HOUR_UTC and state.get("last_rebalance_day") != today)
     if due or force_rebalance:
         targets = strategy.target_weights()
@@ -127,6 +147,7 @@ def main():
     ap.add_argument("--rebalance-now", action="store_true",
                     help="rebalance once on the first loop, then follow the schedule")
     ap.add_argument("--once", action="store_true", help="run one loop and exit")
+    ap.add_argument("--strategy", choices=["riskparity", "drift"], default="riskparity")
     a = ap.parse_args()
     setup_logging()
 
@@ -135,11 +156,10 @@ def main():
             raise SystemExit("Live mode needs BOT_LIVE=yes and HL_API_KEY_FILE set.")
         broker = LiveBroker()
     else:
-        broker = PaperBroker()
-    strategy = RiskParity()
-    state = State(config.STATE_DIR / f"state_{a.mode}.json")
-    alert("started", f"{a.mode} mode, strategy {strategy.name}, markets {config.MARKETS}, "
-          f"leverage {config.LEVERAGE} x {config.VOL_TARGET:.0%} vol", priority="low")
+        broker = PaperBroker(name=f"paper_{a.strategy}")
+    state = State(config.STATE_DIR / f"state_{a.mode}_{a.strategy}.json")
+    strategy = Drift(state) if a.strategy == "drift" else RiskParity()
+    alert("started", f"{a.mode} mode, strategy {strategy.name}", priority="low")
 
     force, errors = a.rebalance_now, 0
     while True:

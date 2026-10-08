@@ -21,8 +21,24 @@
   pre-competition test trades don't affect the scored bankroll.
 - Practice trades don't count toward the 10-trading-day or minimum-volume
   rules; those apply only to the live competition (confirmed Oct 7).
-- Fees: taker 9.0 bp on par (measured Oct 7 test trade). Maker unknown.
-- Unknown: competition length, min volume, position limits, maker fee.
+- Official site: https://perpetual-alpha26.github.io (docs, FAQ, schedule).
+  Contact: perpetual-alpha@googlegroups.com. Part of ICAIF 2026.
+- Dates: practice from Oct 5 (non-scored); SCORED PHASE Oct 19 - Nov 6
+  (~19 days, must trade on >= 10 of them); report + code due Nov 6;
+  winners present at ICAIF Milan, Nov 14-17.
+- Fees (official docs): taker 9 bp (matches our Oct 7 test trade),
+  maker 3 bp, charged in USDPR per fill.
+- Other limits (docs): 50,000 actions/day (unified mode); max 1,000 open
+  orders; open-interest cap $500M per market across all teams; max
+  leverage BTC/ETH 25-40x, HYPE 10x, SP500/USDEUR/USDJPY 50x, others 20x.
+- Prohibited (docs): wash trading/self-crossing, USDPR transfers between
+  teams, deliberate-loss value transfer, coordinated/mirrored trading,
+  off-market trades, book or price manipulation. Violations = DQ.
+  Trading against the market maker's posted quotes is not listed.
+- Code is reviewed by the jury for consistency with the report; document
+  all external data sources and how they're used (FAQ).
+- Unknown: exact minimum notional volume (not published), per-market
+  position limits (exist, figures not published).
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz

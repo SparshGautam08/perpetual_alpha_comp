@@ -23,8 +23,8 @@ def round_px(px: float, sz_decimals: int) -> float:
 class PaperBroker:
     mode = "paper"
 
-    def __init__(self, start_equity: float = 1_000_000.0):
-        self.path = config.STATE_DIR / "paper.json"
+    def __init__(self, start_equity: float = 1_000_000.0, name: str = "paper"):
+        self.path = config.STATE_DIR / f"{name}.json"
         if self.path.exists():
             s = json.loads(self.path.read_text())
         else:

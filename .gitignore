@@ -8,3 +8,4 @@ __pycache__/
 results/
 test_trade_log.jsonl
 bot/state/
+.DS_Store

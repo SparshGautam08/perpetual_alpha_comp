@@ -265,11 +265,79 @@ mid/funding (~1 s) and best bid/ask price changes with exchange time. Size
 Mainnet's full book not recorded (updates every block).
 **Open:** lead-lag analysis once a few days are recorded.
 
+## E13. Funding + drift strategy, development data (Oct 8)
+**Tried:** when par's mid is >= E bp from the oracle, trade toward the
+oracle (sell when mid is above it, buy when below); exit when the gap is
+back within X bp or after H hours. $25k per trade, fills walk the recorded
+book, 9 bp fee each side, hourly funding at recorded rates, forced exit at
+recorder gaps. Grid: E in {15,20,30,40,60}, X in {0,5,10}, H in {1,4,12},
+with or without "funding must pay our side". Development data only (Oct 6
+02:35 to Oct 7 18:33 UTC). **Reproduce:** `python -m backtest.drift_strategy`
+
+**Results**
+- Below 30 bp it loses heavily (fees + spread): median -$14k at 15 bp,
+  -$5k at 20 bp. Around 30 bp it is near zero; 40-60 bp is positive.
+- Best setting (E=40, X=0, H=12): 18 trades in 7 markets, net +$826:
+  entry edge +$1,320, exit cost -$782, funding +$324, fees -$810,
+  **oracle move +$774**. Net excluding oracle moves: **+$52**.
+- E=60: 7 trades, net +$572; one BRENT trade (+$590) is more than all of it.
+- "Funding must pay our side" barely changes anything: funding almost
+  always agrees with the gap's sign (consistent with E7).
+- Flipped strategy (opposite side of every signal): -$4,474, 0% wins.
+  Weak evidence by itself, since flipping also pays costs twice.
+
+**Learned**
+- Break-even math matches the data: entry gains (gap - ~10 bp half-spread),
+  exit costs ~10 bp, fees 18 bp, so the gap must be ~38 bp+ to break even
+  before funding. The grid turns positive right there.
+- The profit only appears if the gap actually closes. EWJ's gap never
+  closed: exits gave back the entry edge (-$667), funding only partly
+  compensated (+$150).
+- Forced exits at recorder gaps cost ~-$460 (4 trades); this is a
+  simulation artifact, not something the live bot would do.
+- Not enough evidence: 28 hours, ~2 dominant episodes (BRENT Oct 6 evening,
+  EWJ Oct 7). Treat as a hypothesis.
+- Ideas not tested yet: exiting with resting (maker) orders instead of
+  crossing the spread; sizing by gap size; holding through to collect
+  funding when the gap persists.
+
+**LOCKED for testing (Oct 8, before any test data was seen)**
+- Rule: enter when |gap| >= 40 bp and funding pays our side; exit when the
+  gap is back to 0 bp or after 12 h; $25k per trade; all 10 markets.
+- Test data: everything after 2026-10-07 18:33:23 UTC.
+- Success criterion: net P&L excluding oracle moves (edge + funding + fees)
+  > 0 on the test data. Also reported: net incl. oracle moves, trade count,
+  per-market breakdown.
+
+## E14. Drift strategy in the bot; official rules found (Oct 8)
+**Built:** `bot/strategy.py: Drift` implements the E13 locked rules exactly
+(40 bp entry, exit at 0, 12 h max, funding must pay our side, $25k, all 10
+markets), checked every loop (60 s). Run with `--strategy drift`; own state
+and paper files, separate from risk parity. Entry/exit code tested in paper
+mode with a temporary 1 bp threshold.
+
+**Bug found and fixed:** closing converted the position to $ at the oracle
+and back to units at the fill price, leaving dust (e.g. EWY -0.112). Closes
+(and the kill switch) now trade the exact position size in units.
+
+**Observation:** at 20:40 UTC Oct 8 every par market was within 3 bp of
+the oracle and funding was at its baseline (5-11%/yr). The large EWJ/BRENT
+gaps of Oct 6-7 were not present. The drift rule would not trade at all in
+such conditions; whether gaps come back is exactly what the test measures.
+
+**Official rules (perpetual-alpha26.github.io):** scored phase Oct 19 -
+Nov 6; taker 9 bp (matches E10), maker 3 bp; prohibited list does not
+include trading against posted market-maker quotes. Minimum notional volume
+not published. Implication: exiting with resting maker orders (3 bp, no
+spread crossing) instead of taker orders (9 bp + ~10 bp) could cut the
+drift strategy's round-trip cost from ~38 bp to ~22 bp. Untested; would be
+a new experiment, not a change to the locked rule.
+
 ---
 
 ## Open questions for organizers
 - Does daily equity for the std score use oracle or mark?
-- Fees on par; maker rebate?
+- ~~Fees on par?~~ Taker 9 bp, maker 3 bp (official docs).
 - ~~Is the balance reset at the start?~~ Yes (confirmed Oct 7).
 - ~~Do practice trades count toward the 10 trading days / minimum volume?~~
   No, those rules apply only to the live competition (confirmed Oct 7).
