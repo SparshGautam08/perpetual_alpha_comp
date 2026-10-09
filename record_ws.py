@@ -12,6 +12,11 @@ polling of record_market_data.py with pushed updates:
   l2_<date>.csv    : full order book, up to LEVELS per side (the par book has
                      ~8). Pushed ~every 5 s; a row is written only when the
                      book changed.
+  trades_<date>.csv: every par trade: price, size, aggressor side (B = buyer
+                     took the ask, A = seller hit the bid), exchange time,
+                     trade id, buyer and seller addresses (public on-chain).
+                     Duplicates (the feed replays recent trades on connect)
+                     are skipped by trade id.
 
 Every row has recv_ms (our clock when the message arrived). bbo and l2 rows
 also have ex_ms (the exchange's timestamp). Files roll over each UTC day.
@@ -60,7 +65,7 @@ BASE_URL = ("https://api.hyperliquid.xyz" if MAINNET
             else os.environ.get("HL_BASE_URL", "https://api.hyperliquid-testnet.xyz"))
 DEX = os.environ.get("HL_DEX", "par")
 WS_URL = "wss" + BASE_URL[len("https"):] + "/ws"
-FEEDS = ("activeAssetCtx", "bbo") if MAINNET else ("activeAssetCtx", "bbo", "l2Book")
+FEEDS = ("activeAssetCtx", "bbo") if MAINNET else ("activeAssetCtx", "bbo", "l2Book", "trades")
 PREFIX = "mn_" if MAINNET else ""
 
 
@@ -111,9 +116,12 @@ for side in ("bid", "ask"):
     for i in range(1, LEVELS + 1):
         l2_fields += [f"{side}{i}_px", f"{side}{i}_sz", f"{side}{i}_n"]
 l2_csv = DailyCsv("l2", l2_fields)
+trades_csv = DailyCsv("trades", ["recv_ms", "ex_ms", "coin", "side", "px", "sz", "tid",
+                                 "buyer", "seller"])
+seen_tids: set = set()         # trade ids already written (replays on reconnect)
 
 last_ctx, last_l2, last_bbo_px = {}, {}, {}   # coin -> last written values
-counts = {"ctx": 0, "bbo": 0, "l2": 0}
+counts = {"ctx": 0, "bbo": 0, "l2": 0, "trades": 0}
 last_msg = time.time()
 running = True
 
@@ -149,6 +157,18 @@ def on_message(_ws, message):
                        "bid_px": bid.get("px"), "bid_sz": bid.get("sz"), "bid_n": bid.get("n"),
                        "ask_px": ask.get("px"), "ask_sz": ask.get("sz"), "ask_n": ask.get("n")})
         counts["bbo"] += 1
+    elif ch == "trades":
+        for t in d:
+            if t["tid"] in seen_tids:
+                continue
+            seen_tids.add(t["tid"])
+            users = t.get("users") or [None, None]
+            trades_csv.write({"recv_ms": now, "ex_ms": t.get("time"), "coin": t["coin"],
+                              "side": t.get("side"), "px": t.get("px"), "sz": t.get("sz"),
+                              "tid": t["tid"], "buyer": users[0], "seller": users[1]})
+            counts["trades"] += 1
+        if len(seen_tids) > 200_000:      # keep memory bounded
+            seen_tids.clear()
     elif ch == "l2Book":
         levels = d.get("levels", [[], []])
         key = json.dumps(levels)
@@ -201,7 +221,8 @@ def status_loop():
             if not running:
                 return
             time.sleep(1)
-        log(f"OK: rows written ctx={counts['ctx']} bbo={counts['bbo']} l2={counts['l2']}")
+        log(f"OK: rows written ctx={counts['ctx']} bbo={counts['bbo']} l2={counts['l2']} "
+            f"trades={counts['trades']}")
 
 
 def stop(*_):
@@ -233,9 +254,10 @@ def main():
         backoff = 1 if time.time() - started > 60 else min(backoff * 2, 60)
         log(f"Reconnecting in {backoff}s")
         time.sleep(backoff)
-    for f in (ctx_csv, bbo_csv, l2_csv):
+    for f in (ctx_csv, bbo_csv, l2_csv, trades_csv):
         f.close()
-    log(f"Stopped. Rows written ctx={counts['ctx']} bbo={counts['bbo']} l2={counts['l2']}")
+    log(f"Stopped. Rows written ctx={counts['ctx']} bbo={counts['bbo']} l2={counts['l2']} "
+        f"trades={counts['trades']}")
 
 
 if __name__ == "__main__":

@@ -535,6 +535,20 @@ Per trade, optimistic fills, $10k:
   (2) maker quotes around a mainnet-based fair price (3 bp fee, earn the
   spread), with adverse-selection risk from other informed traders.
 
+## E22. Par trades feed added to the recorder (Oct 9, infrastructure)
+**Why:** a maker strategy needs to know whether a resting quote at price X
+would have been hit, which only the stream of actual trades shows; it also
+measures informed flow and total volume.
+**Did:** `record_ws.py` (par mode) subscribes to `trades`: price, size,
+aggressor side, exchange time, trade id, buyer/seller addresses (public
+on-chain). The feed replays the last 30 trades on every connect, so rows
+are de-duplicated by trade id. Deployed on the recorder VM Oct 9 23:20 UTC.
+**First observation:** par is very quiet. In a 70 s test no new trade
+occurred; the latest BTC trade was ~5 h old. One address
+(0x1ba2...1ca4) was on one side of every sampled trade, likely the
+organizers' market maker. Maker fills from other traders may be rare
+until the scored phase.
+
 ---
 
 ## Open questions for organizers

@@ -93,7 +93,9 @@
 - Check: tail ~/recorder.log, ls -lh ~/data
 - Second recorder (websocket, started Oct 7): record_ws.py writes to
   ~/data_ws/ (ctxws_ ~1s oracle/mark/funding on change, bbo_ best bid/ask
-  on every change with exchange time, l2_ full book on change). Log:
+  on every change with exchange time, l2_ full book on change, trades_
+  every par trade with aggressor side and buyer/seller addresses, since
+  Oct 9 23:20 UTC). Log:
   ~/record_ws.log. Also covered by ~/watchdog.sh. Old 5s recorder kept
   running in parallel for comparison.
 - Third recorder (Oct 7): record_ws.py --venue mainnet --out ~/data_mainnet
