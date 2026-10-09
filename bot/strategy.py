@@ -34,18 +34,33 @@ def apply_caps(w: dict[str, float]) -> dict[str, float]:
     return w
 
 
-class Drift:
-    """Funding + drift strategy, LOCKED rules from REPORT_NOTES E13 (Oct 8).
+def fill_price(levels, usd: float):
+    """Average price to fill $usd against book levels [(px, sz), ...],
+    best first. None if the book can't fill it."""
+    left, units = usd, 0.0
+    for px, sz in levels or []:
+        take = min(left, px * sz)
+        units += take / px
+        left -= take
+        if left <= 1e-6:
+            return usd / units
+    return None
 
-    Every loop, per market: gap = (par mid / oracle - 1) in bp.
-    - Flat and |gap| >= ENTRY_BP and funding pays our side: trade toward the
-      oracle (gap > 0: sell $NOTIONAL; gap < 0: buy).
-    - Holding: close when the gap is back within EXIT_BP (crossed to our
-      side of 0), or after MAX_HOLD_H hours.
+
+class Drift:
+    """Funding + drift strategy v2, LOCKED rules from REPORT_NOTES E16 (Oct 9).
+    v1 (E13) measured the gap at the top-of-book mid and failed out of sample
+    (E15): small orders from other traders distort the mid.
+
+    Every loop, per market, using the price we can actually trade $NOTIONAL at:
+    - Flat: if selling $NOTIONAL fills >= ENTRY_EDGE_BP above the oracle,
+      sell; if buying fills >= ENTRY_EDGE_BP below it, buy.
+    - Holding: close when closing would cost <= EXIT_COST_BP vs the oracle,
+      or after MAX_HOLD_H hours.
     Do not change these numbers without logging a new experiment."""
-    name = "drift_v1"
-    ENTRY_BP = 40.0
-    EXIT_BP = 0.0
+    name = "drift_v2"
+    ENTRY_EDGE_BP = 40.0
+    EXIT_COST_BP = 10.0
     MAX_HOLD_H = 12.0
     NOTIONAL = 25_000.0
     MARKETS = ["BTC", "ETH", "HYPE", "SP500", "EWY", "EWJ", "BRENT", "GOLD",
@@ -62,24 +77,30 @@ class Drift:
             q = quotes.get(coin)
             if q is None or not q.ok():
                 continue
-            gap = ((q.ask + q.bid) / 2 / q.oracle - 1) * 1e4
             held = positions.get(coin, 0.0)
             if held != 0:
+                usd = abs(held) * q.oracle
+                # Short closes by buying, long by selling; cost vs oracle in bp.
+                px = fill_price(q.asks if held < 0 else q.bids, usd)
+                if px is None:
+                    continue
+                cost = (px / q.oracle - 1) * 1e4 * (1 if held < 0 else -1)
                 e = entries.get(coin)
-                side = 1 if held > 0 else -1
-                # We're short when the gap was positive: closed once gap <= EXIT_BP.
-                closed = (side < 0 and gap <= self.EXIT_BP) or (side > 0 and gap >= -self.EXIT_BP)
                 too_old = e is not None and now_s - e["t"] >= self.MAX_HOLD_H * 3600
-                if closed or too_old:
-                    orders[coin] = (0.0, f"exit ({'gap closed' if closed else 'max hold'}), gap {gap:+.1f} bp")
+                if cost <= self.EXIT_COST_BP or too_old:
+                    why = "cheap exit" if cost <= self.EXIT_COST_BP else "max hold"
+                    orders[coin] = (0.0, f"exit ({why}), close cost {cost:+.1f} bp")
                 continue
-            if abs(gap) < self.ENTRY_BP:
-                continue
-            side = -1 if gap > 0 else 1              # mid above oracle -> sell
-            if (q.funding > 0) != (side < 0):        # funding must pay our side
-                continue
-            orders[coin] = (side * self.NOTIONAL,
-                            f"entry, gap {gap:+.1f} bp, funding {q.funding * 24 * 365 * 100:+.0f}%/yr")
+            sell = fill_price(q.bids, self.NOTIONAL)
+            buy = fill_price(q.asks, self.NOTIONAL)
+            sell_edge = (sell / q.oracle - 1) * 1e4 if sell else -1e9
+            buy_edge = (1 - buy / q.oracle) * 1e4 if buy else -1e9
+            if sell_edge >= self.ENTRY_EDGE_BP:
+                orders[coin] = (-self.NOTIONAL, f"entry: sell ${self.NOTIONAL:,.0f} fills "
+                                f"{sell_edge:+.1f} bp vs oracle, funding {q.funding * 8760 * 100:+.0f}%/yr")
+            elif buy_edge >= self.ENTRY_EDGE_BP:
+                orders[coin] = (self.NOTIONAL, f"entry: buy ${self.NOTIONAL:,.0f} fills "
+                                f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr")
         return orders
 
     def record(self, coin: str, now_s: float, opened: bool):

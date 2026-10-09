@@ -333,6 +333,80 @@ spread crossing) instead of taker orders (9 bp + ~10 bp) could cut the
 drift strategy's round-trip cost from ~38 bp to ~22 bp. Untested; would be
 a new experiment, not a change to the locked rule.
 
+## E15. Locked drift rule, out-of-sample test: FAILED (Oct 9)
+**Test:** the E13 rule exactly as locked, on data after 2026-10-07 18:33
+UTC (to Oct 9 ~03:00 UTC, ~32 h, 233,560 snapshots). Only the 5 s
+recorder's files were used. **Reproduce:** `python -m backtest.drift_strategy --test`
+
+**Results**
+| | Dev (Oct 6-7) | Test (Oct 7-9) |
+|---|---|---|
+| Trades | 18 | 16 |
+| Net incl. oracle moves | +$826 | +$455 |
+| Fill edge (entry + exit) | +$538 | +$13 |
+| Funding | +$324 | +$263 |
+| Fees | -$810 | -$719 |
+| **Net excl. oracle moves (criterion)** | +$52 | **-$443 -> FAILED** |
+- Profit including oracle moves (+$898 of oracle moves) is luck, not edge.
+- Flipped check: -$3,625.
+- Gap frequency changed: share of time |gap| >= 40 bp fell for BRENT
+  (23% -> 2.4%), ETH, EWY; EWJ still ~47%; HYPE rose (1.3% -> 5.2%).
+
+**Diagnosis:** other traders are now on par. The top of the book now
+often holds small orders ($150-$1,900) with 0-6 bp spreads, not just the
+organizer bot's ~$50k levels 20 bp wide. The rule measures the gap from
+the top-of-book mid, which these small orders distort. Example, HYPE Oct 8
+16:03-18:12 UTC: 7 entries in a row with negative entry edge; at those
+moments a $25k buy filled 2-8 bp ABOVE the oracle although the mid looked
+far below it.
+
+**Learned**
+- A signal must be measured at the price we can actually trade at for our
+  size, not at the top-of-book mid.
+- The market is changing as other teams arrive; any cost or gap statistic
+  from Oct 6-7 is out of date. This is why the bot must measure live.
+- Next (new experiment, new lock): enter only when the $25k executable
+  price is >= E bp better than the oracle; test on data after Oct 9.
+
+**Live bot (same v1 rule, VM, since Oct 8 21:01 UTC):** one trade so far,
+BTC Oct 9 02:07-02:08 UTC: bought ~0.247 BTC ~81,700 when par was > 40 bp
+below the oracle, sold one minute later ~82,040. Price +$82, fees -$36,
+net ~+$46. Account 1,000,042.98.
+
+## E16. Drift v2: signal at the executable price (Oct 9)
+**Change from v1:** enter when a $25k fill (walking the book) is >= E bp
+better than the oracle (sell above it / buy below it); exit when closing
+would cost <= C bp vs the oracle, or after H hours. v1 used the top-of-book
+mid, which small orders from other traders distort (E15).
+**Design data:** all data seen so far (Oct 6 02:35 - Oct 9 03:05 UTC),
+since the v1 diagnosis already looked at it. Also reported separately for
+the early (Oct 6-7) and late (Oct 7-9) halves.
+**Reproduce:** `python -m backtest.drift_strategy --v2`
+
+**Results (net excluding oracle moves; grid E in {15,20,30,40}, C in
+{5,10,15}, H in {4,12}, funding required or not)**
+| E / C / H | Trades | Total | Early half | Late half |
+|---|---|---|---|---|
+| 40 / 5 / 12 | 16 | +$1,105 | +$611 | +$421 |
+| 40 / 10 / 12 | 16 | +$972 | +$513 | +$385 |
+| 30 / 10 / 12 | 24 | +$874 | +$344 | +$457 |
+- Median by entry edge: 15 bp -$1,403; 20 bp -$287; 30 bp +$622; 40 bp +$766.
+- 30-40 bp is positive in BOTH halves, including the period where v1
+  failed. Requiring funding to pay our side doesn't help; dropped.
+- 12 h holds beat 4 h (more time for the gap to close cheaply).
+- Book now much tighter: on Oct 9 03:09 UTC a $25k trade filled 1-11 bp
+  from the oracle in every market (vs ~20 bp on Oct 6-7).
+
+**LOCKED v2 (Oct 9, before any data after 03:05 UTC was seen)**
+- Rule: entry when the $25k fill is >= 40 bp better than the oracle; exit
+  when closing costs <= 10 bp vs the oracle, or after 12 h; $25k; all 10
+  markets; no funding condition. (Middle of the positive region, not the
+  best cell.)
+- Test data: everything after 2026-10-09 03:05 UTC.
+- Success criterion: net excluding oracle moves > 0 on the test data.
+- Bot: `bot/strategy.py: Drift` (name drift_v2) implements exactly this,
+  measuring fills from the live book every 60 s.
+
 ---
 
 ## Open questions for organizers

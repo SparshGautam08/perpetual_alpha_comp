@@ -105,6 +105,24 @@
 - Download: tar czf data.tar.gz data, then the SSH window's "Download file".
 - About 50 MB/day.
 
+## Bot VM (Google Cloud, started Oct 8)
+- VM `bot` (e2-small, us-central1), same project as the recorder. Runs the
+  bot LIVE 24/7: drift strategy (`--strategy drift`), key bot1.
+- Code: ~/perpetual_alpha_comp, cloned with a READ-ONLY deploy key
+  (~/.ssh/deploy_key, GitHub deploy key "bot VM (read-only)"). Python venv
+  ~/venv (uv), installed from requirements.txt.
+- Key: ~/keys/api_wallet_bot1.key (chmod 600). Never put team_wallet.key on
+  any server.
+- ~/run_bot.sh sets HL_API_KEY_FILE, NTFY_TOPIC, BOT_LIVE and starts the
+  bot; log ~/bot.log. ~/bot_watchdog.sh (cron every 5 min) restarts it
+  unless bot/state/STOP exists.
+- Check: tail ~/bot.log. Stop + flatten: touch
+  ~/perpetual_alpha_comp/bot/state/STOP (watchdog then leaves it stopped;
+  rm the file to allow restarts). Update code: cd ~/perpetual_alpha_comp
+  && git pull && pkill -f "bot.main --mode live" (watchdog restarts it
+  within 5 min with the new code).
+- Only ONE live bot per account: don't run it on a laptop at the same time.
+
 ## Strategy direction
 - Most teams will use generic AI strategies; our edge should come from
   this competition's specifics:
