@@ -286,6 +286,35 @@ def run_v2(prep: dict, params: dict, flip=False) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+LOCKED_V2 = {"entry_edge_bp": 40, "exit_cost_bp": 10, "max_hold_h": 12, "need_funding": False}
+
+
+def test_v2() -> None:
+    """Out-of-sample test of the locked v2 rule on data after V2_DEV_END.
+    Success criterion (E16): net excluding oracle moves > 0."""
+    pd.set_option("display.width", 240)
+    pd.set_option("display.float_format", "{:.2f}".format)
+    df = load()
+    test = df[df.time > V2_DEV_END]
+    print(f"v2 TEST: {test.time.min():%m-%d %H:%M} -> {test.time.max():%m-%d %H:%M} UTC, "
+          f"{len(test):,} rows, rule {LOCKED_V2}")
+    prep = prepare(test)
+    tr = run_v2(prep, LOCKED_V2)
+    sm = summarize(tr)
+    print({k: (round(v, 2) if isinstance(v, float) else v) for k, v in sm.items()})
+    if not tr.empty:
+        tr = tr.assign(hold_h=(tr.t1 - tr.t0).dt.total_seconds() / 3600,
+                       t0=tr.t0.dt.strftime("%m-%d %H:%M"))
+        print(tr[["coin", "t0", "side", "hold_h", "edge_in", "edge_out", "oracle_move",
+                  "funding", "fees", "net", "why"]].to_string(index=False))
+        ex = (tr.edge_in + tr.edge_out + tr.funding + tr.fees).sum()
+        print(f"\nNet excluding oracle moves: ${ex:,.2f} -> criterion {'PASSED' if ex > 0 else 'FAILED'}")
+        fl = summarize(run_v2(prep, LOCKED_V2, flip=True))
+        print(f"Flipped check: net ${fl.get('net_$', 0):,.2f} over {fl['trades']} trades")
+    else:
+        print("No trades in the test period.")
+
+
 def main_v2():
     pd.set_option("display.width", 240)
     pd.set_option("display.float_format", "{:.2f}".format)
@@ -318,4 +347,4 @@ def main_v2():
 
 
 if __name__ == "__main__" and "--v2" in __import__("sys").argv:
-    main_v2()
+    test_v2() if "--test" in __import__("sys").argv else main_v2()

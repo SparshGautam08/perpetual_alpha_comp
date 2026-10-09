@@ -30,7 +30,9 @@ import pandas as pd
 from .costs import FEE_BPS
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "server_data"
+# 5 s recorder files: server_data/data/ (unpacked from the VM's data/ folder);
+# older downloads put them directly in server_data/.
+SRC = ROOT / "server_data" / "data" if (ROOT / "server_data" / "data").is_dir() else ROOT / "server_data"
 ORDER_SIZES = [10_000, 50_000, 100_000, 250_000]   # $ notional
 
 # Fixed analysis settings (chosen Oct 7 2026, before seeing later data).

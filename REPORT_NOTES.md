@@ -449,6 +449,32 @@ rather than repeat quietly; (3) with errors since 9 AM CT, nobody acted for
 **Account at discovery (22:54 UTC):** equity at oracle 1,000,586 (+$642
 since Oct 9 04:00 UTC), funding -$73.50 over 133 payments.
 
+## E19. Drift v2 locked test: criterion PASSED, but adverse selection (Oct 9)
+**Test:** locked v2 rule (E16) on data after 2026-10-09 03:05 UTC, to
+23:09 UTC (~20 h, 144,020 snapshots). **Reproduce:**
+`python -m backtest.drift_strategy --v2 --test`
+
+**Results:** 9 trades (all sells: ETH x5, BTC x2, BRENT, HYPE).
+| Entry edge | Exit cost | Funding | Fees | Excl. oracle | Oracle moves | Net |
+|---|---|---|---|---|---|---|
+| +$1,107 | -$517 | +$93 | -$405 | **+$278 PASSED** | -$427 | -$149 |
+- Entries really were 100-130 bp above the oracle (the v1 measurement
+  problem is fixed).
+- Backtest matches live: the live bot entered ETH at 10:3x and BTC at
+  12:5x UTC, the same moments as the backtest's first two trades.
+- **Oracle moved against us in 7 of 9 trades:** when par's bids sit far
+  above the oracle, the oracle tends to rise to meet them. Likely informed
+  traders (e.g. watching mainnet) buying on par before the oracle updates;
+  selling to them is adverse selection.
+- Flipped check not meaningful for v2 (re-enters almost constantly, 664
+  trades).
+- Two ETH trades ended at short recorder gaps (simulation artifact).
+
+**Learned:** the strict criterion passed, but n = 9 and the all-in result
+was slightly negative. The adverse-selection pattern points to the
+mainnet lead signal as a filter (skip gaps that mainnet says are
+"informed") and possibly as its own strategy. Next: E20.
+
 ---
 
 ## Open questions for organizers
