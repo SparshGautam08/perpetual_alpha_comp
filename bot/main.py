@@ -41,6 +41,7 @@ def setup_logging():
         h.setFormatter(fmt)
         log.addHandler(h)
     log.setLevel(logging.INFO)
+    log.propagate = False   # the SDK configures the root logger; avoid double lines
 
 
 class State:
