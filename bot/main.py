@@ -26,6 +26,7 @@ from .alerts import alert
 from .broker import LiveBroker, PaperBroker
 from .execution import flatten, rebalance, trade_to
 from .market import snapshot
+from .portfolio import Combined
 from .strategy import Drift, RiskParity
 
 log = logging.getLogger("bot")
@@ -93,6 +94,8 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
     # Kill switch: flatten and exit.
     if config.STOP_FILE.exists():
         fills = flatten(broker, quotes)
+        if isinstance(strategy, Combined):
+            strategy.reset()
         alert("STOPPED", f"STOP file found. Flattened {len(fills)} orders. "
               f"Positions now {broker.positions()}", priority="urgent")
         return False
@@ -103,6 +106,8 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
         return True
     if start_eq and equity < start_eq * (1 - config.DAILY_LOSS_STOP):
         fills = flatten(broker, quotes)
+        if isinstance(strategy, Combined):
+            strategy.reset()
         state.set(halted_day=today)
         alert("loss stop", f"Equity {equity:,.0f} is {(equity / start_eq - 1) * 100:.2f}% "
               f"on the day. Flattened ({len(fills)} orders); no trading until tomorrow UTC.",
@@ -110,6 +115,24 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
         return True
 
     if config.PAUSE_FILE.exists():
+        return True
+
+    if config.REBALANCE_FILE.exists():
+        force_rebalance = True
+        config.REBALANCE_FILE.unlink()
+        log.info("REBALANCE file found: rebalancing now")
+
+    if isinstance(strategy, Combined):
+        due = (now.hour == config.REBAL_HOUR_UTC and state.get("last_rebalance_day") != today) \
+            or force_rebalance
+        quotes = snapshot(held_markets(broker, strategy.markets))
+        strategy.step(broker, quotes, equity, due)
+        if due:
+            state.set(last_rebalance_day=today)
+        equity = broker.equity_oracle(quotes)
+        log.info(f"HEARTBEAT {broker.mode} {strategy.name} equity@oracle {equity:,.2f} "
+                 f"positions {json.dumps({k: round(v, 6) for k, v in broker.positions().items()})} "
+                 f"drift_units {json.dumps(state.get('drift_units', {}))}")
         return True
 
     if isinstance(strategy, Drift):
@@ -147,7 +170,8 @@ def main():
     ap.add_argument("--rebalance-now", action="store_true",
                     help="rebalance once on the first loop, then follow the schedule")
     ap.add_argument("--once", action="store_true", help="run one loop and exit")
-    ap.add_argument("--strategy", choices=["riskparity", "drift"], default="riskparity")
+    ap.add_argument("--strategy", choices=["riskparity", "drift", "combined"],
+                    default="riskparity")
     a = ap.parse_args()
     setup_logging()
 
@@ -158,7 +182,8 @@ def main():
     else:
         broker = PaperBroker(name=f"paper_{a.strategy}")
     state = State(config.STATE_DIR / f"state_{a.mode}_{a.strategy}.json")
-    strategy = Drift(state) if a.strategy == "drift" else RiskParity()
+    strategy = {"drift": lambda: Drift(state), "combined": lambda: Combined(state),
+                "riskparity": RiskParity}[a.strategy]()
     alert("started", f"{a.mode} mode, strategy {strategy.name}", priority="low")
 
     force, errors = a.rebalance_now, 0

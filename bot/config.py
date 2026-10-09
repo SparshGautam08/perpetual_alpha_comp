@@ -51,4 +51,5 @@ ROOT = Path(__file__).resolve().parent
 STATE_DIR = Path(_env("BOT_STATE_DIR", str(ROOT / "state")))
 STOP_FILE = STATE_DIR / "STOP"     # create it: flatten everything and exit
 PAUSE_FILE = STATE_DIR / "PAUSE"   # create it: keep running, place no orders
+REBALANCE_FILE = STATE_DIR / "REBALANCE"  # create it: rebalance on next loop (then deleted)
 NTFY_TOPIC = _env("NTFY_TOPIC", "")  # secret-ish topic name; empty = log only

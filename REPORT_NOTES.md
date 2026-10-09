@@ -407,6 +407,28 @@ the early (Oct 6-7) and late (Oct 7-9) halves.
 - Bot: `bot/strategy.py: Drift` (name drift_v2) implements exactly this,
   measuring fills from the live book every 60 s.
 
+## E17. Combined bot: risk parity base + drift v2 (Oct 9)
+**Why:** drift alone may not trade for days, but the rules require trading
+on >= 10 of ~19 scored days plus a minimum volume. Risk parity rebalances
+daily (activity, volume, steadiness); drift adds opportunistic trades.
+Running the base live also tests the backtester's cost/fill assumptions
+at real size (~$340k vs drift's $25k).
+**Design ("sleeves", `bot/portfolio.py`):** drift's share of each market is
+tracked exactly in state (what its trades opened/closed); risk parity's
+share is the rest (its daily targets, in units, held between rebalances).
+Each loop the bot trades only the difference between the summed wishes and
+the actual position, so opposite wishes net out (fewer fees). Drift's exits
+only see its own share. Kill switch / loss stop flatten and clear targets.
+Run with `--strategy combined`; `touch bot/state/REBALANCE` forces a
+rebalance on the next loop.
+**Paper test (Oct 9 03:17 UTC):** RP built 7 positions (BTC $36.6k ...
+SP500 $130k; cost $405 at oracle). Forced drift short BTC against RP's
+long: one net sell, actual 0.1415 = RP 0.4460 + drift -0.3045. Forced
+drift exit: BTC back to 0.4462 (target 0.4460), drift share empty. Kill
+switch: all flat, targets cleared.
+**Open:** drift's P&L can't be read from the account alone; log sleeve
+units each heartbeat and attribute P&L offline.
+
 ---
 
 ## Open questions for organizers

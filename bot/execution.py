@@ -94,6 +94,7 @@ def _trade(broker, coin: str, delta_usd: float, cur_usd: float,
         if sz <= 0:
             break
         filled, px = broker.order(q, is_buy, sz, limit, reduce_only)
+        filled, px = float(filled), float(px)
         f = {"coin": coin, "side": "buy" if is_buy else "sell", "req_sz": sz,
              "filled": filled, "px": px, "oracle": q.oracle,
              "vs_oracle_bp": (px / q.oracle - 1) * 1e4 if filled else None,
