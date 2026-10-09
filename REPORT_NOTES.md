@@ -503,6 +503,38 @@ oracle (our scoring price) catches up, without needing to sell quickly.
 Costs (9 bp fee + spread) mean only large mainnet jumps can pay; frequency
 and P&L to be measured in E21.
 
+## E21. Lead signal as a standalone taker strategy: does NOT pay (Oct 9)
+**Tried:** premium = mainnet mid vs par oracle minus its 30-min rolling
+median; |premium| >= K bp -> buy/sell $N on par, close after H s. Fills
+from the recorded par book (data_ws/l2): optimistic = last book seen;
+conservative = next book update. 9 bp fee each side. Grid K in
+{10,15,20,30}, H in {30,60,300} s, N in {$10k,$25k}. Design data Oct 7
+22:39 - Oct 9 23:09 UTC. **Reproduce:** `python -m backtest.lead_strategy`
+
+**Results:** negative in every cell except K=30 (8-10 trades, about
+breakeven: -$23 conservative / +$33 optimistic at $10k, H=300).
+Per trade, optimistic fills, $10k:
+| Signal | Trades | Oracle move | Entry vs oracle | Exit vs oracle | Fees | Net |
+|---|---|---|---|---|---|---|
+| ~12 bp | 582 | +11.2 | -6.3 | -9.9 | -18.0 | -23.0 |
+| ~18 bp | 149 | +16.3 | -8.1 | -11.8 | -18.0 | -21.6 |
+| ~22 bp | 53 | +24.1 | -5.7 | -14.1 | -18.0 | -13.7 |
+| ~33 bp | 8 | +35.0 | -33.5 | +20.6 | -18.0 | +4.1 |
+(bp of notional)
+
+**Learned**
+- The forecast is excellent: the oracle moves by ~the full signal.
+- A taker round trip costs ~35 bp (18 bp fees + entry 6-8 + exit 10-14);
+  par's book is NOT as stale as hoped (other traders update it), so we
+  can't buy at the old price cheaply.
+- Only signals > ~35 bp pay; rare (8 in two days). Rejected as a
+  standalone strategy.
+- Ways to use the forecast without paying for it: (1) time trades the bot
+  must make anyway (rebalances, drift exits, volume) to when mainnet
+  predicts a favourable oracle move: ~10-20 bp gain, zero extra fees;
+  (2) maker quotes around a mainnet-based fair price (3 bp fee, earn the
+  spread), with adverse-selection risk from other informed traders.
+
 ---
 
 ## Open questions for organizers
