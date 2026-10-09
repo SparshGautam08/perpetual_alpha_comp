@@ -549,6 +549,50 @@ occurred; the latest BTC trade was ~5 h old. One address
 organizers' market maker. Maker fills from other traders may be rare
 until the scored phase.
 
+## E23. ML Model 1: oracle forecast, walk-forward (Oct 9)
+**Task:** predict par's oracle change over the next H s (bp), H = 5/15/30,
+from 20 features available at time t: mainnet-vs-oracle premium (raw,
+offset-removed, and 1-10 s lags), mainnet returns (1-60 s) and 5-min vol,
+par oracle returns (5-60 s) and seconds since its last change, par book
+mid vs oracle, mainnet's own oracle vs par oracle, hour, US session flag,
+market id. Pooled over 10 markets, 1.74M one-second rows (Oct 7 22:44 -
+Oct 9 23:08 UTC).
+**Models:** baseline = OLS on the offset-removed premium (the E20 rule);
+ridge on all features; HistGradientBoosting (300 iters, lr 0.05, 31
+leaves, min leaf 200, l2 1.0, market as categorical).
+**Validation:** walk-forward, expanding train window (first 24 h), 4 test
+blocks of 6 h, 5-min purge gap. All metrics out of sample.
+**Reproduce:** `python -m backtest.ml_forecast`
+
+**Results (mean over folds)**
+| H | Model | R2 | Corr | Hit, top 10% | Move, top 10% | Move, top 1% |
+|---|---|---|---|---|---|---|
+| 5 s | baseline | 0.35 | 0.63 | 92.2% | 1.6 bp | 3.8 bp |
+| 5 s | GBM | 0.64 | 0.80 | 97.6% | 2.1 bp | 4.7 bp |
+| 15 s | baseline | 0.23 | 0.50 | 86.8% | 2.4 bp | 5.3 bp |
+| 15 s | ridge | 0.35 | 0.59 | 90.9% | 2.8 bp | 6.0 bp |
+| 15 s | GBM | 0.36 | 0.60 | 91.1% | 2.8 bp | 6.0 bp |
+| 30 s | baseline | 0.12 | 0.36 | 78.0% | 2.4 bp | 5.5 bp |
+| 30 s | GBM | 0.17 | 0.42 | 81.0% | 2.8 bp | 5.9 bp |
+- GBM > ridge > baseline in every one of the 4 folds at 15 s (GBM R2
+  0.34-0.37 vs baseline 0.20-0.30).
+- Per market (last fold, corr): biggest gains where the raw premium was
+  weak: GOLD 0.19 -> 0.53, EWJ 0.27 -> 0.54, USDJPY 0.23 -> 0.42, SP500
+  0.44 -> 0.68.
+- Ablation: ridge is nearly as good as GBM at 15-30 s, so most of the gain
+  comes from the features, not non-linearity. GBM's extra edge is at 5 s.
+
+**Learned:** a much better short-term fair price than the raw premium.
+Predicted moves are small (top 10% ~2.8 bp, top 1% ~6 bp), far below
+taker round-trip costs (~35 bp, E21), so the model's use is as the fair
+price for maker quotes and for timing necessary trades, not as a taker
+signal.
+
+**LOCKED (Oct 9, before any data after 23:09 UTC was seen):** features,
+GBM hyperparameters, training scheme and H = 15 s as above. Test: train on
+all design data, evaluate on data after 2026-10-09 23:09 UTC. Success
+criterion: GBM out-of-sample R2 at 15 s exceeds the baseline's.
+
 ---
 
 ## Open questions for organizers
