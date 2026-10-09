@@ -475,6 +475,34 @@ was slightly negative. The adverse-selection pattern points to the
 mainnet lead signal as a filter (skip gaps that mainnet says are
 "informed") and possibly as its own strategy. Next: E20.
 
+## E20. Mainnet leads par's oracle by ~5-9 seconds (Oct 9)
+**Data:** websocket recordings of par (ctxws) and Hyperliquid mainnet (bbo
+mid, ctxws) on the same VM clock, 1 s grid, Oct 7 22:39 - Oct 9 23:09 UTC
+(174,571 s). **Reproduce:** `python -m backtest.lead_lag`
+
+**Results**
+- Lead/lag (correlation of 1 s returns, mainnet shifted -30..+30 s): par's
+  oracle best matches mainnet 5 s later (BTC, ETH, HYPE), 7-9 s later
+  (SP500, EWY, EWJ, BRENT, GOLD, FX); corr 0.17-0.27 at the best lag vs
+  ~0.00-0.04 at lag 0. Par's book mid also lags mainnet by 4-8 s.
+- Prediction: premium = mainnet mid / par oracle - 1. Correlation with the
+  par oracle's next-5 s change: 0.77 BTC, 0.78 ETH, 0.66 BRENT, 0.64 HYPE,
+  0.55-0.57 SP500/EWY. When |premium| >= 3 bp, the oracle moves that way
+  within 5 s: BTC 98.6%, ETH 97.7%, SP500 100% (n=359), BRENT 93.1%,
+  USDEUR 97.3% (n=520), EWY 81.5%; HYPE/EWJ/GOLD/USDJPY 52-62%.
+- HYPE, EWJ, GOLD, USDJPY have a persistent mainnet-vs-oracle offset (median
+  |premium| 4-5 bp) that hides the signal; measure against a rolling
+  baseline next time.
+- Drift link (E19 question): premium at the 9 drift v2 entries was -11 to
+  +3 bp and did not predict the oracle's next-30-min move. The lead works
+  over seconds; drift trades last hours. Hypothesis not supported.
+
+**Learned:** mainnet is a strong, fast predictor of par's oracle, and
+par's book lags too, so one can buy on par at a stale price before the
+oracle (our scoring price) catches up, without needing to sell quickly.
+Costs (9 bp fee + spread) mean only large mainnet jumps can pay; frequency
+and P&L to be measured in E21.
+
 ---
 
 ## Open questions for organizers
