@@ -137,8 +137,9 @@ class LiveBroker:
 
     def order(self, q: Quote, is_buy: bool, sz: float, limit_px: float,
               reduce_only: bool) -> tuple[float, float]:
-        res = self.ex.order(q.name, is_buy, sz, limit_px, {"limit": {"tif": "Ioc"}},
-                            reduce_only=reduce_only)
+        # Plain Python types only: the SDK's msgpack signing rejects numpy types.
+        res = self.ex.order(q.name, bool(is_buy), float(sz), float(limit_px),
+                            {"limit": {"tif": "Ioc"}}, reduce_only=bool(reduce_only))
         if res.get("status") != "ok":
             raise RuntimeError(f"order rejected: {res}")
         st = res["response"]["data"]["statuses"][0]

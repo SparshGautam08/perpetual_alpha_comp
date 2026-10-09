@@ -429,6 +429,26 @@ switch: all flat, targets cleared.
 **Open:** drift's P&L can't be read from the account alone; log sleeve
 units each heartbeat and attribute P&L offline.
 
+## E18. Live incident: drift exits crashed for ~9 hours (Oct 9)
+**What happened:** drift v2's first live trades: sold ~$25k ETH (Oct 9
+~10:30 UTC) and ~$25k BTC (~12:50 UTC), both par prices >= 40 bp above
+the oracle, netted against risk parity's longs. From ~14:00 UTC every loop
+failed when trying to close them; ntfy "errors" alerts every 10 min. The
+positions stayed open past the 12 h limit and the loss stop could not act.
+**Cause:** after an entry, drift's share was stored as a numpy float in
+memory; the exit order's is_buy / reduce_only became numpy booleans; the
+SDK's msgpack signing raises "can not serialize 'numpy.bool'". Entries
+worked (previous share was 0, a plain float). The paper test missed it
+because the paper broker doesn't sign orders.
+**Fix:** plain Python types throughout the order path, plus a final cast in
+LiveBroker.order. Regression test signs an exit built from numpy inputs.
+**Lessons:** (1) paper tests must exercise the real signing path;
+(2) a repeated error should escalate (e.g. auto-pause + urgent alert)
+rather than repeat quietly; (3) with errors since 9 AM CT, nobody acted for
+9 hours: alerts need a clear "what to do" line.
+**Account at discovery (22:54 UTC):** equity at oracle 1,000,586 (+$642
+since Oct 9 04:00 UTC), funding -$73.50 over 133 payments.
+
 ---
 
 ## Open questions for organizers

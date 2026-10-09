@@ -57,11 +57,11 @@ class Combined:
             q = quotes.get(c)
             if q is None or not q.ok():
                 continue
-            cur = actual.get(c, 0.0)
-            desired = rp_t.get(c, 0.0) + drift_t.get(c, 0.0)
+            cur = float(actual.get(c, 0.0))
+            desired = float(rp_t.get(c, 0.0) + drift_t.get(c, 0.0))
             delta = desired - cur
-            d = drift_t.get(c, 0.0) - drift_now.get(c, 0.0)     # drift's wanted change
-            r = delta - d                                         # the rest is risk parity's
+            d = float(drift_t.get(c, 0.0) - drift_now.get(c, 0.0))  # drift's wanted change
+            r = delta - d                                             # the rest is risk parity's
             drift_trades = c in orders
             rp_trades = rebalance_due and abs(r) * q.oracle >= config.BAND * equity
             if not (drift_trades or rp_trades):
@@ -94,7 +94,7 @@ class Combined:
             internal = min(abs(d), abs(r))
             extra = max(abs(d) - internal, 0.0)
             new = old + np.sign(d) * (internal + min(abs(f), extra))
-        new = round(new, dec)
+        new = float(round(float(new), dec))     # plain float: numpy types break order signing
         units = dict(self.state.get("drift_units", {}))
         units[c] = new
         self.state.set(drift_units={k: v for k, v in units.items() if v})

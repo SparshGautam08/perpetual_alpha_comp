@@ -66,10 +66,12 @@ def _trade(broker, coin: str, delta_usd: float, cur_usd: float,
            reduce_only: bool | None = None, close_units: float | None = None) -> list[dict]:
     """Send delta_usd as slices of at most MAX_ORDER_USD, re-reading the
     book before each slice. Stops early if a slice doesn't fill."""
-    is_buy = delta_usd > 0
+    delta_usd, cur_usd = float(delta_usd), float(cur_usd)
+    is_buy = bool(delta_usd > 0)
     # Reduce-only when the trade only shrinks the position (never flips it).
     if reduce_only is None:
-        reduce_only = cur_usd != 0 and (cur_usd > 0) != is_buy and abs(delta_usd) <= abs(cur_usd)
+        reduce_only = bool(cur_usd != 0 and (cur_usd > 0) != is_buy
+                           and abs(delta_usd) <= abs(cur_usd))
     left = abs(delta_usd)
     fills = []
     for _ in range(MAX_SLICES):
