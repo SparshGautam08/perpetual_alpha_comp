@@ -193,7 +193,7 @@ def main():
             if not step(broker, strategy, state, force):
                 break
             force = False
-            if errors:
+            if errors >= 3:      # only if an error alert actually went out
                 alert("recovered", f"Working again after {errors} failed loop(s)", key="recovered")
             errors = 0
         except Exception as e:
