@@ -45,6 +45,18 @@ class Combined:
                                                    for c, u in sorted(rp_t.items())))
             self.state.set(rp_target_units=rp_t)
 
+        # Dust: a drift share too small to trade (< exchange minimum) is just
+        # forgotten (it becomes part of risk parity's share), otherwise the
+        # exit would be retried every loop forever (seen Oct 10: -0.02 HYPE).
+        dust = [c for c, u in drift_now.items()
+                if c in quotes and abs(u) * quotes[c].oracle < config.MIN_ORDER_USD]
+        if dust:
+            log.info(f"Drift dust dropped: {dict((c, drift_now[c]) for c in dust)}")
+            for c in dust:
+                drift_now.pop(c)
+                self.drift.record(c, time.time(), opened=False)
+            self.state.set(drift_units=drift_now)
+
         orders = self.drift.tick(quotes, drift_now, time.time())
         drift_t = dict(drift_now)
         for c, (usd, reason) in orders.items():
