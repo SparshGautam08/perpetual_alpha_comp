@@ -593,6 +593,21 @@ GBM hyperparameters, training scheme and H = 15 s as above. Test: train on
 all design data, evaluate on data after 2026-10-09 23:09 UTC. Success
 criterion: GBM out-of-sample R2 at 15 s exceeds the baseline's.
 
+## E24. Live drift v2 trades, Saturday Oct 10 (live log)
+Three HYPE round trips by the combined bot (fills from the exchange):
+| Time (CT) | Trade | Held | Price P&L | Fees | Net |
+|---|---|---|---|---|---|
+| 09:13 | buy below oracle, sell | 3.3 min | +$293 | -$45 | +$248 |
+| 09:25 | buy below oracle, sell | 1.1 min | +$129 | -$45 | +$84 |
+| 11:24 | sell above oracle, buy back | 1.1 min | +$170 | -$45 | +$125 |
+Total ~+$457 net; 3/3 profitable, all closed within minutes as the gap
+closed (crypto trades through the weekend). Equity at oracle 1,001,649 at
+17:11 UTC (+$1,063 since Fri 23:53 UTC); funding -$45 since then.
+**Bug found:** partial exits (drift closing on top of risk parity's
+position) were sized in $ at the oracle, so each sold ~0.5% less than the
+entry bought; 3.3 HYPE (~$280) was left over. Fixed: size in exact units
+(`close_units`); paper round trip now returns to the RP target exactly.
+
 ---
 
 ## Open questions for organizers

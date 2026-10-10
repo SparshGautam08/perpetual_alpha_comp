@@ -80,7 +80,10 @@ class Combined:
             return []
         if abs(cur_units + delta_units) < 10 ** -q.sz_decimals:   # going flat
             return close(broker, coin, cur_units, q.oracle)
-        return _trade(broker, coin, delta_units * q.oracle, cur_units * q.oracle)
+        # Size in units (not $ at the oracle) so drift's exits sell exactly what
+        # its entries bought; $ sizing left ~1% behind on each exit (Oct 10).
+        return _trade(broker, coin, delta_units * q.oracle, cur_units * q.oracle,
+                      close_units=abs(delta_units))
 
     def _attribute(self, c, d, r, f, drift_now, dec):
         """Decide how much of the filled amount f belongs to drift's share."""
