@@ -608,6 +608,23 @@ position) were sized in $ at the oracle, so each sold ~0.5% less than the
 entry bought; 3.3 HYPE (~$280) was left over. Fixed: size in exact units
 (`close_units`); paper round trip now returns to the RP target exactly.
 
+## E25. More drift trades: check frequency, and a 30 bp variant (Oct 10)
+**Check frequency** (locked v2 rule, snapshots thinned to every 5/15/30/60 s):
+| Check every | Trades Oct 6-9 | Net | Excl. oracle | Trades test period (Oct 9) |
+|---|---|---|---|---|
+| 5 s | 25 | +$1,777 | +$1,250 | 9 |
+| 15 s | 23 | +$1,494 | +$1,212 | 8 |
+| 60 s (live bot) | 20 | +$1,520 | +$1,278 | 8 |
+Checking faster adds only ~20% trades; the limit is that >= 40 bp
+executable gaps are rare (~7/day across 10 markets).
+
+**LOCKED variant v2b (Oct 10, before data after 2026-10-09 23:09 UTC was
+seen):** identical to v2 but entry edge >= 30 bp (exit <= 10 bp, 12 h,
+$25k, all 10 markets). In the v2 design grid (E16) 30 bp gave ~50% more
+trades and was positive in both halves. Test on data after 2026-10-09
+23:09 UTC, alongside v2 on the same data. Success criterion: v2b net
+excluding oracle moves > 0 AND v2b total net >= v2 total net on that data.
+
 ---
 
 ## Open questions for organizers
