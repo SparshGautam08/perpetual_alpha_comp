@@ -11,8 +11,8 @@
   3. Jury score on a 2-4 page technical report (AI/ML depth, originality,
      rigor/reproducibility, clarity).
 - Score weights: profit 40%, low daily-return std dev 30%, report 30%.
-- Rules: trade on >= 10 distinct days, hit a minimum notional volume,
-  entries must be algorithmic. No wash trading, self-crossing, collusion,
+- Rules: entries must be algorithmic; >= 1 trade to be ranked (the earlier
+  10-day / minimum-volume rules were dropped, Oct 9). No wash trading, self-crossing, collusion,
   or attacks on exchange/oracle. Organizer market-making bots quote in all
   markets. Per-market position limits. Fixed bankroll, no top-ups.
 - Outside data IS allowed (confirmed by organizers Oct 7), e.g. CME
@@ -37,8 +37,27 @@
   Trading against the market maker's posted quotes is not listed.
 - Code is reviewed by the jury for consistency with the report; document
   all external data sources and how they're used (FAQ).
-- Unknown: exact minimum notional volume (not published), per-market
-  position limits (exist, figures not published).
+- Organizer answers (Discord #ask-anything, Oct 9-10):
+  - Eligibility simplified: only >= 1 trade needed. NO minimum volume and
+    NO minimum trading days anymore.
+  - LIVE PHASE USES A NEW DEX (name/markets not announced yet). Everything
+    must switch from `par` via one setting; re-check market behaviour.
+  - Report/code deadline Nov 6. Bot updates allowed during the live phase.
+  - Request budget (address-based): 10,000 + 1 per $1 filled volume, not
+    reset before Oct 19. Ours on Oct 10: cumVlm $633k, cap 643,568, used 40.
+  - Unified mode is capped at 50k actions/day; Standard has no cap. The
+    organizers fund the new DEX directly in either mode. To switch to
+    Standard: userSetAbstraction -> "disabled" from the TEAM wallet, before
+    live funding (only needed for heavy quoting, e.g. a maker strategy).
+  - Funding parameters = the matching Hyperliquid mainnet markets.
+  - Keyrock's market-making bots were to start during practice "hopefully
+    by" Oct 8 (answer Oct 7). Likely the cause of the Oct 8 book change.
+  - Orders must be within 80% of markPx (mark stays within +-1/maxLeverage,
+    i.e. +-2-5%, of the oracle). Pre-trade capacity: availableToTrade from
+    activeAssetData (team address, coin e.g. par:BTC) = free collateral per
+    side; maxTradeSzs = availableToTrade x leverage / markPx.
+- Unknown: per-market position limits (exist, figures not published);
+  new DEX name and markets.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
