@@ -92,7 +92,7 @@ class Combined:
             except Exception as e:      # recorded below, then re-raised
                 err = e
             f = self._position_change(broker, c, cur)
-            self._attribute(c, d, r, f, drift_now, q.sz_decimals)
+            self._attribute(c, d, r, f, drift_now, q.sz_decimals, q.oracle)
             drift_now = {k: v for k, v in self.state.get("drift_units", {}).items() if v}
             if err is not None:
                 log.error(f"{c}: trade failed after {f:+g} units filled; drift records updated")
@@ -122,7 +122,7 @@ class Combined:
         return _trade(broker, coin, delta_units * q.oracle, cur_units * q.oracle,
                       close_units=abs(delta_units))
 
-    def _attribute(self, c, d, r, f, drift_now, dec):
+    def _attribute(self, c, d, r, f, drift_now, dec, oracle=None):
         """Decide how much of the filled amount f belongs to drift's share."""
         old = drift_now.get(c, 0.0)
         if d == 0:
@@ -139,6 +139,6 @@ class Combined:
         units[c] = new
         self.state.set(drift_units={k: v for k, v in units.items() if v})
         if old == 0 and new != 0:
-            self.drift.record(c, time.time(), opened=True)
+            self.drift.record(c, time.time(), opened=True, oracle=oracle)
         elif old != 0 and new == 0:
             self.drift.record(c, time.time(), opened=False)

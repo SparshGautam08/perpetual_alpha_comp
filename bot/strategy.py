@@ -63,6 +63,10 @@ class Drift:
     ENTRY_EDGE_BP = float(__import__("os").environ.get("DRIFT_ENTRY_BP", 40.0))
     EXIT_COST_BP = 10.0
     MAX_HOLD_H = 12.0
+    # Catastrophe stop (E31): close if the trade loses this much at the oracle
+    # vs the oracle at entry. Never triggered in a week of data (worst trade
+    # ~-100 bp); insurance against rare crashes, not a performance lever.
+    STOP_BP = 200.0
     NOTIONAL = 25_000.0
     MARKETS = ["BTC", "ETH", "HYPE", "SP500", "EWY", "EWJ", "BRENT", "GOLD",
                "USDEUR", "USDJPY"]
@@ -88,8 +92,11 @@ class Drift:
                 cost = (px / q.oracle - 1) * 1e4 * (1 if held < 0 else -1)
                 e = entries.get(coin)
                 too_old = e is not None and now_s - e["t"] >= self.MAX_HOLD_H * 3600
-                if cost <= self.EXIT_COST_BP or too_old:
-                    why = "cheap exit" if cost <= self.EXIT_COST_BP else "max hold"
+                stopped = (e is not None and e.get("o") and
+                           (1 if held > 0 else -1) * (q.oracle / e["o"] - 1) * 1e4 <= -self.STOP_BP)
+                if cost <= self.EXIT_COST_BP or too_old or stopped:
+                    why = ("cheap exit" if cost <= self.EXIT_COST_BP else
+                           "STOP" if stopped else "max hold")
                     orders[coin] = (0.0, f"exit ({why}), close cost {cost:+.1f} bp")
                 continue
             sell = fill_price(q.bids, self.NOTIONAL)
@@ -104,10 +111,10 @@ class Drift:
                                 f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr")
         return orders
 
-    def record(self, coin: str, now_s: float, opened: bool):
+    def record(self, coin: str, now_s: float, opened: bool, oracle: float | None = None):
         entries = self.state.get("drift_entries", {})
         if opened:
-            entries[coin] = {"t": now_s}
+            entries[coin] = {"t": now_s, "o": oracle}
         else:
             entries.pop(coin, None)
         self.state.set(drift_entries=entries)

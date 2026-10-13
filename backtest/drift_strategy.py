@@ -218,7 +218,7 @@ GRID_V2 = {"entry_edge_bp": [15, 20, 30, 40], "exit_cost_bp": [5, 10, 15],
 
 
 def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
-                need_funding, flip=False) -> list[dict]:
+                need_funding, flip=False, stop_bp=None) -> list[dict]:
     """Enter when a $NOTIONAL fill is >= entry_edge_bp better than the
     oracle (sell above it / buy below it); exit when closing would cost at
     most exit_cost_bp vs the oracle, or after max_hold_h."""
@@ -240,7 +240,10 @@ def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
             close_cost = -buy_edge[i] if pos["side"] < 0 else -sell_edge[i]
             cheap = close_cost <= exit_cost_bp
             old = t[i] - pos["t0"] >= max_hold
-            if cheap or old or last_in_seg:
+            # Optional stop (E31): loss marked at the oracle vs our entry price.
+            stopped = stop_bp is not None and \
+                pos["side"] * (o[i] / pos["px0"] - 1) * 1e4 <= -stop_bp
+            if cheap or old or stopped or last_in_seg:
                 px = sell_px[i] if pos["side"] > 0 else buy_px[i]
                 if np.isnan(px):
                     continue
@@ -252,7 +255,8 @@ def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
                     "oracle_move": s * q * (o[i] - pos["o0"]),
                     "funding": pos["funding"],
                     "fees": -FEE_BPS / 1e4 * q * (pos["px0"] + px),
-                    "why": "cheap exit" if cheap else ("max hold" if old else "data gap")})
+                    "why": "cheap exit" if cheap else ("max hold" if old else
+                                                        ("stop" if stopped else "data gap"))})
                 pos = None
             continue
         if last_in_seg:

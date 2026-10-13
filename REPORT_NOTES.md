@@ -689,6 +689,67 @@ there is no Monday reopen gap. The "weekend gap" edge is dropped, and no
 weekend de-risking is needed. Consistent with SEDA using 24/7 sources (e.g.
 Hyperliquid's xyz perps).
 
+## E29. Live configuration change (Oct 13 ~00:10 UTC)
+- Loaded the E26 double-exit fix on the VM (it had not been pulled until
+  now; the VM was on e1b0dc0).
+- Drift entry threshold 40 -> 30 bp (v2b passed its locked test, E27).
+- Risk parity leverage 0.5 -> 0.25 (market exposure was the main source of
+  daily swings, E26; no activity requirement since Oct 9; E5 favours low
+  leverage). Resize: BTC, ETH, EWY, BRENT, GOLD halved; SP500 partly (book
+  depth within the price limit ran out); HYPE skipped (change $9.3k, under
+  the 1%-of-equity band). Cost $54 in fees for ~$60k first pass.
+- Equity at oracle 994,957 after the resize.
+
+## E30. Backtest vs live: the gap is check speed (Oct 13)
+**Reproduce:** `python -m backtest.live_vs_backtest`
+Weekend Fri 23:09 -> Tue 00:02 UTC, rule v2 (40 bp). Live round trips
+built from the account's fills (excluding risk parity and the E26 orphan),
+with the oracle at each fill time from the 5 s recorder.
+| | Live | Backtest (5 s checks) |
+|---|---|---|
+| Trades | 14 | 18 |
+| Entry edge per trade | 45.3 bp | 52.1 bp |
+| Exit per trade | -3.0 bp | -5.9 bp |
+| Net | **+$464** | +$1,117 |
+(Monday's "~+$200 live" estimate was wrong: it mixed in the orphan and RP.)
+- Matched trades (11): live entered a median 10 s later with nearly the
+  same entry edge (45.8 vs 48.8 bp) and a better exit; net $269 vs $440,
+  the difference is one BRENT trade (live entered 50 s later: -$603 vs -$294).
+- 7 backtest trades live missed (backtest net +$677): every one was a gap
+  lasting <= 5 s (one snapshot), invisible to a bot checking every 15-60 s.
+- 3 live trades not in the backtest: +$195.
+**Backtest at the live check speed (same weekend):**
+| Rule | every 5 s | 15 s | 30 s | 60 s |
+|---|---|---|---|---|
+| 40 bp | +$1,117 (18) | +$301 (14) | +$694 (8) | +$575 (5) |
+| 30 bp | +$1,956 (44) | +$1,463 (39) | +$1,414 (24) | +$1,017 (18) |
+**Learned:** live execution is fine; the 5 s backtest overstates what a
+15 s polling bot can catch. At live speed, 30 bp earns ~5x 40 bp, which
+supports the E29 switch. Reacting to pushed prices (websocket) instead of
+polling would add ~+$500/weekend at 30 bp, and the maker strategy needs the
+same live feed. Future drift backtests must report results at the live
+check interval.
+
+## E31. Stop-loss for drift: no benefit; wide catastrophe stop only (Oct 13)
+Drift 30 bp, checks every 15 s (the live setup), Oct 6 -> Oct 13 00:02 UTC,
+stop = close when the trade loses X bp at the oracle vs the entry price.
+| Stop | Trades | Net | Oct 6-9 | Weekend | Worst trade | Stopped |
+|---|---|---|---|---|---|---|
+| none | 65 | +$3,829 | +$2,009 | +$1,820 | -$301 | 0 |
+| 100-200 bp | 65 | +$3,829 | same | same | -$301 | 0 |
+| 50-75 bp | 65 | +$3,743 | +$2,009 | +$1,735 | -$387 | 1 |
+- No drift trade lost > ~100 bp at the oracle; cheap-exit + 12 h max hold
+  already bound losses. Tight stops close trades that would have recovered.
+- Live's -$603 BRENT trade was execution (entered 50 s late; backtest
+  -$301), not a missing stop (E30).
+- At live settings drift made +$3,829 in ~6.9 days (~$550/day), positive in
+  both halves.
+**Decision:** no performance stop; add a 200 bp catastrophe stop (vs the
+oracle at entry, now stored in drift's records) purely as insurance; it
+never triggers in the data, so results are unchanged. Paper test: 3%
+adverse oracle move -> exit "STOP", records cleared.
+(`simulate_v2(..., stop_bp=...)` in backtest/drift_strategy.py.)
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

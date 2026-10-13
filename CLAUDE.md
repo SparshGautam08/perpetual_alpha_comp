@@ -135,7 +135,9 @@
 - Key: ~/keys/api_wallet_bot1.key (chmod 600). Never put team_wallet.key on
   any server.
 - ~/run_bot.sh sets HL_API_KEY_FILE, NTFY_TOPIC, BOT_LIVE and starts the
-  bot; log ~/bot.log. ~/bot_watchdog.sh (cron every 5 min) restarts it
+  bot; log ~/bot.log. Since Oct 13 00:10 UTC it also sets LOOP_SECONDS=15,
+  DRIFT_ENTRY_BP=30 (v2b) and LEVERAGE=0.25 (risk parity at half size), and
+  runs `--strategy combined`. ~/bot_watchdog.sh (cron every 5 min) restarts it
   unless bot/state/STOP exists.
 - Check: tail ~/bot.log. Stop + flatten: touch
   ~/perpetual_alpha_comp/bot/state/STOP (watchdog then leaves it stopped;
