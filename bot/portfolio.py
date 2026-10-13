@@ -80,11 +80,36 @@ class Combined:
                 continue
             if not rp_trades:          # drift-only loop: don't drag RP's small drift along
                 r, delta = 0.0, d
-            fills = self._trade_units(broker, c, delta, cur, q)
-            fills_all += fills
-            f = sum(x["filled"] * (1 if x["side"] == "buy" else -1) for x in fills)
+            # What actually filled is measured from the exchange position
+            # before vs after, not from order replies: if the trade raises
+            # half-way (network error after a fill), drift's records still
+            # match reality and the trade is never repeated (Oct 12 incident:
+            # a crash right after an exit made the next loop exit again,
+            # leaving an orphan 9.8 ETH long).
+            err = None
+            try:
+                fills_all += self._trade_units(broker, c, delta, cur, q)
+            except Exception as e:      # recorded below, then re-raised
+                err = e
+            f = self._position_change(broker, c, cur)
             self._attribute(c, d, r, f, drift_now, q.sz_decimals)
+            drift_now = {k: v for k, v in self.state.get("drift_units", {}).items() if v}
+            if err is not None:
+                log.error(f"{c}: trade failed after {f:+g} units filled; drift records updated")
+                raise err
         return {"fills": fills_all}
+
+    @staticmethod
+    def _position_change(broker, coin, before, tries=3):
+        """Actual position change since `before`, read from the exchange
+        (retried, since this runs right after an error)."""
+        for i in range(tries):
+            try:
+                return float(broker.positions().get(coin, 0.0)) - before
+            except Exception:
+                if i == tries - 1:
+                    raise
+                time.sleep(2)
 
     @staticmethod
     def _trade_units(broker, coin, delta_units, cur_units, q):

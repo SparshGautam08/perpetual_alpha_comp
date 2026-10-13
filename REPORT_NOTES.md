@@ -627,6 +627,27 @@ excluding oracle moves > 0 AND v2b total net >= v2 total net on that data.
 
 ---
 
+## E26. Live weekend Oct 10-12: drift activity, a double exit, market loss
+**Drift, Sat 14:16 - Mon 18:57 CT:** 14 completed round trips (HYPE x3,
+EWY x5, BRENT x3, ETH x2, BTC x1), 10 profitable, net ~+$200 after fees.
+Most closed within 1-13 min. EWY traded Sunday evening when futures
+reopened. Largest loss: BRENT short 02:38 -> 08:47 CT Mon, -$603 (oil
+rallied; exited by the cheap-exit rule after 6 h).
+**Market:** risk parity's longs lost ~-$5,000 on Monday's sell-off (ETH
+-4%, HYPE -6%, EWY -3.6%). Equity at oracle 996,525 at 23:57 UTC Oct 12.
+**Incident (double exit):** ETH drift short entered 03:01:01 UTC and was
+closed 03:01:44; the loop then crashed (03:01:48, probably a network error
+on the next request) before drift's records were saved, so the next loop
+"closed" the short again, buying another ~$25k ETH. The orphan 9.8 ETH long
+was silently counted as risk parity's share, so no rule closed it (~-$1,050
+by Monday evening as ETH fell). Fixed: drift's change is now measured from
+the exchange position before vs after each trade (not from order replies),
+and records are saved even when the trade raises. Test: simulated 502 after
+a fill -> records flat, next loop does not trade again.
+**Lessons:** state must be derived from the exchange, not assumed from
+order replies; "risk parity absorbs the rest" hid the orphan, so a daily
+check of actual vs target positions should alert on large mismatches.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
