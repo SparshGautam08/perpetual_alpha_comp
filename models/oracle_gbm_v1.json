@@ -1,0 +1,31 @@
+{
+  "model": "HistGradientBoostingRegressor (E23 settings)",
+  "target": "par oracle log change next 15 s, bp",
+  "features": [
+    "prem_raw",
+    "prem_dm",
+    "prem_dm_l1",
+    "prem_dm_l3",
+    "prem_dm_l5",
+    "prem_dm_l10",
+    "m_ret_1",
+    "m_ret_5",
+    "m_ret_15",
+    "m_ret_60",
+    "m_vol_300",
+    "o_ret_5",
+    "o_ret_15",
+    "o_ret_60",
+    "o_stale_s",
+    "parmid_vs_oracle",
+    "moracle_vs_oracle",
+    "hour",
+    "us_open",
+    "market"
+  ],
+  "train_from": "2026-10-07 22:44:53+00:00",
+  "train_to": "2026-10-13 00:01:54+00:00",
+  "rows": 4341458,
+  "sklearn": "1.9.1",
+  "in_sample_r2": 0.3738096887245872
+}

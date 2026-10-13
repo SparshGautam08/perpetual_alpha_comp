@@ -9,3 +9,5 @@ results/
 test_trade_log.jsonl
 bot/state/
 .DS_Store
+shadow/
+maker_test_log_*

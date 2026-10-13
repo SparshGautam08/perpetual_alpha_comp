@@ -750,6 +750,33 @@ never triggers in the data, so results are unchanged. Paper test: 3%
 adverse oracle move -> exit "STOP", records cleared.
 (`simulate_v2(..., stop_bp=...)` in backtest/drift_strategy.py.)
 
+## E32. Shadow mode for ML Model 1 (Oct 13, setup)
+**Why:** before the model sets any live price, run it live WITHOUT trading
+and check its predictions against what the oracle actually did, so a
+mismatch between live and training inputs can't silently corrupt trading.
+**Built:**
+- `bot/features.py`: the input calculation moved out of the research code
+  and shared by training (`backtest/ml_forecast.py`) and live. Verified
+  identical: max difference 0.0 over 21,601 s for BTC and GOLD.
+- `backtest/train_oracle_model.py`: final GBM (E23 settings) trained on
+  all recorded data, Oct 7 22:44 -> Oct 13 00:01 UTC, 4.34M rows,
+  in-sample R2 0.374 (out-of-sample test was 0.324). Baseline (OLS on the
+  offset-removed premium) saved alongside. Files in `models/`.
+- `bot/shadow.py`: websockets for par (oracle, book mid) and mainnet (bbo
+  mid, oracle); a 1 s snapshot grid like the recorder's; predictions of the
+  next-15 s oracle move by GBM and baseline for all 10 markets, logged per
+  second. No orders, no key. Missed seconds (if the process falls behind)
+  are forward-filled so time-based inputs stay aligned.
+- `backtest/eval_shadow.py`: scores the log (realized move from the log's
+  own oracle at t+15 s).
+**First local test (laptop, Oct 13 21:43-21:59 UTC):** the pipeline ran
+end to end (predictions for all 10 markets after the 5-min warm-up), but
+the laptop/network paused (process froze ~3.5 min, feeds reconnected
+every ~1 min, other commands hung), and par's oracle barely moved (mean
+|15 s move| 0.06-0.38 bp vs ~1-3 bp normally), so the 7 minutes of
+scores (GBM R2 -0.20, baseline -2.12) say nothing. Next: run overnight on
+the bot VM and score.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
