@@ -648,6 +648,47 @@ a fill -> records flat, next loop does not trade again.
 order replies; "risk parity absorbs the rest" hid the orphan, so a daily
 check of actual vs target positions should alert on large mismatches.
 
+## E27. Locked tests on the first weekend (Oct 12)
+Test data: Fri Oct 9 23:09 UTC -> Tue Oct 13 00:02 UTC (~73 h), never used
+for design.
+**Drift v2 vs v2b (E16, E25):**
+| | v2, 40 bp (live) | v2b, 30 bp |
+|---|---|---|
+| Trades / markets | 18 / 5 | 44 / 6 |
+| Win rate | 83% | 77% |
+| Entry edge / exit / oracle / funding / fees | +2,343 / -265 / -181 / +30 / -810 | +4,069 / -308 / +121 / +54 / -1,980 |
+| Net | +$1,117 | +$1,956 |
+| **Net excl. oracle (criterion)** | **+$1,299 PASSED** | **+$1,835 PASSED** |
+v2b's second criterion (net >= v2's net) also PASSED. Profit comes from
+the entry edge; oracle moves ~0 (not luck).
+**Backtest vs live gap:** the live bot's drift made only ~+$200 net over
+the same period (before the E26 double exit), vs +$1,117 backtested for the
+same v2 rule; live BRENT -$603 vs backtest BRENT -$175. Live checked every
+60 s then 15 s (backtest 5 s) and nets against risk parity. To analyze.
+
+**ML Model 1 (E23), trained on design data only:**
+| Slice | R2 baseline | R2 GBM |
+|---|---|---|
+| All test data (criterion) | 0.160 | **0.324 PASSED** |
+| Crypto, weekend | 0.201 | 0.294 |
+| Crypto, weekday | 0.241 | 0.287 |
+| Other markets, weekend | **-1.028** | **0.360** |
+| Other markets, weekday | 0.263 | 0.393 |
+On weekends the raw-premium rule breaks (mainnet moves while non-crypto
+oracles update slowly: R2 < 0); the GBM, using staleness features, does
+not. Per market GBM R2 0.16-0.46 except USDEUR (-0.06).
+**Reproduce:** see the commands in this commit's message (inline scripts).
+
+## E28. The weekend oracle does not freeze (Oct 12)
+**Reproduce:** `python -m backtest.weekend_gap` (Fri 13:00 - Mon 13:00 CT)
+Longest oracle pause per market over the weekend: SP500 16 min, EWY 42 min,
+EWJ 55 min, GOLD 24 min, BRENT 16 min, crypto < 15 min; USDEUR 6.3 h and
+USDJPY 2.2 h (Saturday). Jumps when the oracle resumed: all |jump| <= 4 bp.
+**Learned:** par's oracle keeps updating through the weekend (slowly), so
+there is no Monday reopen gap. The "weekend gap" edge is dropped, and no
+weekend de-risking is needed. Consistent with SEDA using 24/7 sources (e.g.
+Hyperliquid's xyz perps).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
