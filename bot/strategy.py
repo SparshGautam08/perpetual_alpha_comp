@@ -59,7 +59,8 @@ class Drift:
       or after MAX_HOLD_H hours.
     Do not change these numbers without logging a new experiment."""
     name = "drift_v2"
-    ENTRY_EDGE_BP = 40.0
+    # 40 bp = v2 (E16); 30 bp = v2b, which passed its locked test (E27).
+    ENTRY_EDGE_BP = float(__import__("os").environ.get("DRIFT_ENTRY_BP", 40.0))
     EXIT_COST_BP = 10.0
     MAX_HOLD_H = 12.0
     NOTIONAL = 25_000.0
