@@ -64,7 +64,12 @@
 - Team wallet (public): 0xC9f1C5a784d2cd5858396299893e71cfe23F4aAf
 - Balance: 1,000,000 USDPR. Unified account mode is ON.
 - API wallet `bot1` approved: 0x20Cb52dfA3C9934f3ef802FF2D988640532E239C,
-  expires ~Nov 5, 2026.
+  expires ~Nov 5, 2026. WARNING: that is BEFORE the competition ends (Nov
+  6). Before Nov 5, move the main bot to another key (bot2, or a new bot3:
+  max 3 API wallets per account).
+- API wallet `bot2` approved Oct 14: 0x98b0525EE675CC9F1Bf4Da5ae628Af49d11735E3,
+  valid until ~Nov 13, 2026. Key ~/keys/api_wallet_bot2.key (laptop). For
+  the maker process (one key per running process); not yet on the VM.
 - Bot key file: ~/keys/api_wallet_bot1.key (outside this folder).
   Use via: export HL_API_KEY_FILE=~/keys/api_wallet_bot1.key
 - Max 3 API wallets per account; one key per running process.
