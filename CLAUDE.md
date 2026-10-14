@@ -139,7 +139,7 @@
 - About 50 MB/day.
 
 ## Bot VM (Google Cloud, started Oct 8)
-- VM `bot` (e2-small, us-central1), same project as the recorder. Runs the
+- VM `bot` (e2-small: 2 vCPU, 2 GB; upgraded from e2-micro 1 GB on Oct 14 when memory ran low), us-central1, same project as the recorder. Runs the
   bot LIVE 24/7: drift strategy (`--strategy drift`), key bot1.
 - Code: ~/perpetual_alpha_comp, cloned with a READ-ONLY deploy key
   (~/.ssh/deploy_key, GitHub deploy key "bot VM (read-only)"). Python venv
