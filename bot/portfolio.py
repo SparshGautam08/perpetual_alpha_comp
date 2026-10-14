@@ -9,6 +9,7 @@ Each market's position = risk parity's share + drift's share.
   difference to the actual position is traded. Opposite wishes net out
   internally (fewer fees).
 """
+import json
 import logging
 import time
 
@@ -64,6 +65,12 @@ class Combined:
             log.info(f"DRIFT {c}: {reason}")
 
         actual = broker.positions()
+        # The maker (separate process, own key) owns part of some positions; it
+        # writes its own inventory to maker_units_live.json. Exclude it so risk
+        # parity never trades the maker's inventory as its own.
+        maker = self._maker_units(broker)
+        for c, u in maker.items():
+            actual[c] = actual.get(c, 0.0) - u
         fills_all = []
         for c in sorted(set(rp_t) | set(drift_t) | set(actual)):
             q = quotes.get(c)
@@ -86,18 +93,40 @@ class Combined:
             # match reality and the trade is never repeated (Oct 12 incident:
             # a crash right after an exit made the next loop exit again,
             # leaving an orphan 9.8 ETH long).
-            err = None
+            err, fills = None, []
             try:
-                fills_all += self._trade_units(broker, c, delta, cur, q)
+                fills = self._trade_units(broker, c, delta, cur, q)
+                fills_all += fills
             except Exception as e:      # recorded below, then re-raised
                 err = e
-            f = self._position_change(broker, c, cur)
+            if err is None:
+                # Normal case: what OUR orders filled (a maker fill in the same
+                # second can't be mistaken for drift's).
+                f = sum(x["filled"] * (1 if x["side"] == "buy" else -1) for x in fills)
+            else:
+                # Error mid-trade: order replies may be lost, so measure the real
+                # position change instead (E26).
+                f = self._position_change(broker, c, cur + maker.get(c, 0.0))
             self._attribute(c, d, r, f, drift_now, q.sz_decimals, q.oracle)
             drift_now = {k: v for k, v in self.state.get("drift_units", {}).items() if v}
             if err is not None:
                 log.error(f"{c}: trade failed after {f:+g} units filled; drift records updated")
                 raise err
         return {"fills": fills_all}
+
+    @staticmethod
+    def _maker_units(broker) -> dict:
+        if broker.mode != "live":
+            return {}
+        p = config.STATE_DIR / "maker_units_live.json"
+        try:
+            d = json.loads(p.read_text())
+            return {c: float(u) for c, u in d.get("units", {}).items()}
+        except FileNotFoundError:
+            return {}
+        except Exception as e:
+            log.warning(f"maker_units_live.json unreadable: {e}")
+            return {}
 
     @staticmethod
     def _position_change(broker, coin, before, tries=3):

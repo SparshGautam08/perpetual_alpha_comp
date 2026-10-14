@@ -96,6 +96,18 @@
   touch bot/state/STOP (flatten + exit); bot/state/PAUSE (no orders).
   Alerts via ntfy (NTFY_TOPIC env). Will run on its own new small VM.
 - backtest/: backtester, baselines, leverage study, live market analysis.
+- ML Model 1 (oracle forecast): models/oracle_gbm_v1.joblib (+ baseline),
+  trained by backtest/train_oracle_model.py; inputs in bot/features.py
+  (shared by training and live). bot/livefeed.py = live websocket feed +
+  model predictions every second. bot/shadow.py = shadow mode (predictions
+  logged, no trading; running on the bot VM since Oct 14 15:24 UTC, log
+  ~/shadow.log, data ~/shadow/, ~/shadow_watchdog.sh in cron).
+  backtest/eval_shadow.py scores shadow logs.
+- bot/maker.py: ML maker (post-only quotes around the ML fair price).
+  Paper by default (fills simulated from par's trade feed). Live needs its
+  OWN key (bot2, not yet created): BOT_LIVE=yes HL_MAKER_KEY_FILE=... It
+  writes its inventory to bot/state/maker_units_live.json; the combined bot
+  excludes it. maker_test.py = the Oct 13 standalone micro-test.
 - SDK: hyperliquid-python-sdk==0.24.0, Python venv in .venv.
   The SDK's meta_and_asset_ctxs() has no dex arg; post
   {"type":"metaAndAssetCtxs","dex":"par"} directly.

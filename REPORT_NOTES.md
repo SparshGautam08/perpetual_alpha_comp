@@ -800,6 +800,30 @@ timestamp. (2) One-sided fills built a ~$1,500 long (BTC +0.012, HYPE
 no adverse markout in 2 measurable fills: encouraging but n is tiny; fills
 are rare and one-sided so far.
 
+## E34. ML maker and shared live feed (Oct 14, build)
+**Built:**
+- `bot/livefeed.py`: one live component (par + mainnet websockets, the
+  recorder's 1 s grid, `compute_features`, GBM and baseline predictions
+  every second, par best bid/ask and trades). Shadow mode was rebuilt on
+  it, so what shadow validates is exactly what the maker trades on.
+- `bot/maker.py`: post-only quotes at centre +- offset, centre = ML fair
+  price (oracle x (1 + GBM 15 s prediction)) leaned against own inventory
+  (`--lean` bp at the cap); never crosses the book; size/cap limits; live
+  dead man's switch; own inventory from own fills only, written to
+  `maker_units_live.json` for the combined bot. `--fair base|oracle` for
+  the A/B comparison. Paper fills from par's real trade feed ("touch" =
+  trade at our price, optimistic; "through" = beyond it, conservative).
+  Edge and markouts use the oracle at the fill's own second (E33 fix).
+- Combined bot: excludes the maker's inventory from risk parity's share;
+  counts drift's fills from its own order replies (position change only
+  after an error), so a maker fill can't be attributed to drift.
+**Tests:** paper fill logic unit test (touch/through, side, partial fills)
+passed; combined-bot regression (drift entry/exit) clean.
+**First paper run (laptop, 10 min, Oct 14 15:36 UTC):** 2 fills (HYPE
+sells, $182), edge at fill +5.2 bp, markout 10 s -3.6 / 60 s -5.9 / 300 s
+0.0 bp. n = 2, meaningless. The laptop fell 143 s behind again; long runs
+go on the VM.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
