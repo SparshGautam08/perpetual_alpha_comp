@@ -163,6 +163,28 @@
   within 5 min with the new code).
 - Only ONE live bot per account: don't run it on a laptop at the same time.
 
+## Current status (end of Oct 14) and next steps
+- Scored phase starts Oct 19 (new DEX, name not announced). Practice money
+  resets then. Equity at oracle ~992,900 on Oct 14 (practice).
+- Running on the bot VM: live combined bot (drift 30 bp + risk parity at
+  0.25x + 200 bp catastrophe stop), shadow mode (ML predictions logged to
+  ~/shadow/), and two PAPER makers since Oct 14 ~18:20 UTC
+  (`--fair gbm` and `--fair base`, logs ~/maker_*.log, fills/markouts in
+  ~/perpetual_alpha_comp/bot/state/maker_paper_*_*.csv). Makers have no
+  watchdog.
+- Key results so far: drift v2/v2b passed locked tests (E27); at live
+  check speed (15 s) drift 30 bp made ~$550/day in backtest (E30-E31);
+  ML Model 1 passed its out-of-sample test, R2 0.32 vs baseline 0.16
+  (E27); weekend oracle does not freeze (E28); maker micro-test: fills ~5
+  bp better than oracle, no adverse markout, tiny n (E33).
+- Next: (1) download ~/shadow and the maker CSVs from the bot VM, score
+  with backtest/eval_shadow.py and compare gbm vs base maker markouts;
+  (2) if good, copy ~/keys/api_wallet_bot2.key to the bot VM (by hand) and
+  run the ML maker live small; (3) decide risk parity's role (it drives
+  most daily swings, E26); (4) switch everything to the new DEX when
+  announced; (5) move the main bot off bot1 before Nov 5; (6) start the
+  report (REPORT_NOTES.md has all experiments E1-E34).
+
 ## Strategy direction
 - Most teams will use generic AI strategies; our edge should come from
   this competition's specifics:
