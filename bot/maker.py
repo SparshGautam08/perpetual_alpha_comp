@@ -153,7 +153,10 @@ class Maker:
         meta = requests.post(PAR + "/info", json={"type": "meta", "dex": DEX}, timeout=10).json()
         self.dec = {m["name"].split(":", 1)[1]: m["szDecimals"] for m in meta["universe"]}
         STATE.mkdir(parents=True, exist_ok=True)
-        self.state_path = STATE / f"maker_{broker.mode}.json"
+        # Paper runs keep separate inventories per fair-price variant (A/B runs
+        # side by side); live keeps one, since it trades the real account.
+        self.state_path = STATE / (f"maker_paper_{a.fair}.json" if broker.mode == "paper"
+                                   else "maker_live.json")
         st = json.loads(self.state_path.read_text()) if self.state_path.exists() else {}
         self.inv = {c: float(st.get("inv", {}).get(c, 0.0)) for c in a.coins}
         self.fills, self.pending = [], []
