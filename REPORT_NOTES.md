@@ -771,11 +771,34 @@ mismatch between live and training inputs can't silently corrupt trading.
   own oracle at t+15 s).
 **First local test (laptop, Oct 13 21:43-21:59 UTC):** the pipeline ran
 end to end (predictions for all 10 markets after the 5-min warm-up), but
-the laptop/network paused (process froze ~3.5 min, feeds reconnected
-every ~1 min, other commands hung), and par's oracle barely moved (mean
+the testnet API dropped connections at 21:51-21:59 UTC (the maker test,
+running at the same time, logged "Remote end closed connection" errors at
+the same moments) and the laptop lid was later closed (process froze ~3.5
+min), and par's oracle barely moved (mean
 |15 s move| 0.06-0.38 bp vs ~1-3 bp normally), so the 7 minutes of
 scores (GBM R2 -0.20, baseline -2.12) say nothing. Next: run overnight on
 the bot VM and score.
+
+## E33. Maker micro-test, first run (Oct 13, laptop)
+**Ran:** `maker_test.py --minutes 60 --confirm` from 21:37 UTC: $500
+post-only quotes on HYPE, BTC, ETH at fair +-6 bp (fair = par oracle x
+(1 + mainnet premium - its rolling median)). The laptop lid was closed
+partway; the exchange's dead man's switch cancelled the quotes (0 open
+orders afterwards), but the script could not close its own inventory.
+**Fills:** 5 (3 orders), all BUYS, all maker (crossed=False), fee 3.0 bp
+($0.15 per $500): HYPE 6.12 @ 81.702 (21:42), BTC 0.006 @ 83,391 (21:48),
+BTC 0.006 @ 83,436 (21:54). Testnet API connection drops at 21:51-21:59
+UTC were handled (logged, loop continued).
+**Markouts (oracle from the shadow log, BTC only):** fill @83,391: +5.4 bp
+at 60 s, +8.3 bp at 5 min; fill @83,436: edge +5.5 bp at fill, +5.5 bp at
+10 s and 60 s. Not picked off on these.
+**Problems:** (1) the script's "edge" used the oracle when it NOTICED the
+fill (delayed by the errors), not at the fill time; fix: use the fill's
+timestamp. (2) One-sided fills built a ~$1,500 long (BTC +0.012, HYPE
++6.12) left in the account. (3) Run on the VM, not a laptop.
+**Learned:** maker fills at ~5-8 bp better than the oracle, 3 bp fee, and
+no adverse markout in 2 measurable fills: encouraging but n is tiny; fills
+are rare and one-sided so far.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
