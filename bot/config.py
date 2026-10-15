@@ -12,7 +12,10 @@ def _env(name, default, cast=str):
 # --- Connection ---
 BASE_URL = _env("HL_BASE_URL", "https://api.hyperliquid-testnet.xyz")
 MAINNET_URL = "https://api.hyperliquid.xyz"   # outside data: price history
-DEX = "par"
+# Live phase moves to a NEW dex (name TBA): set HL_DEX (and HL_COLLATERAL if
+# its collateral token differs) everywhere; check first with check_dex.py.
+DEX = _env("HL_DEX", "par")
+COLLATERAL = _env("HL_COLLATERAL", "USDPR")
 TEAM = _env("HL_TEAM_ADDRESS", "0xC9f1C5a784d2cd5858396299893e71cfe23F4aAf")
 KEY_FILE = _env("HL_API_KEY_FILE", "")         # only needed in live mode
 

@@ -895,6 +895,21 @@ fills would be fewer and likely worse); one 29-hour window.
 **Decision:** do not run the maker live as configured. Possible next
 tests (paper, with the fixed code): wider offset, smaller size, ETH off.
 
+## E37. One-setting switch to the live-phase DEX (Oct 15, infrastructure)
+**Why:** the organizers will run the scored phase on a new dex whose name
+and markets are announced late; the live bot had "par" hard-coded.
+**Built:** `HL_DEX` (default par) and `HL_COLLATERAL` (default USDPR) now
+drive the live bot (bot/config.py, broker equity), balance.py, the live
+feed (shadow, maker) and both recorders. Bot state files get a dex prefix
+off par, so positions remembered on par never carry over. `check_dex.py`
+(read-only): `--find` lists dexes by par's deployer (the organizers'
+address); `check_dex.py <dex>` shows markets, collateral token, leverage,
+OI caps, oracle vs mainnet twin, team balance and the settings to use.
+**Tested on par:** check_dex.py: 10 markets, collateral USDPR, every
+oracle within +-10 bp of its mainnet twin, only par found by the deployer
+today; paper bot `--once --strategy combined` runs with unchanged file
+names; HL_DEX override read correctly.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

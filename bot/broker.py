@@ -120,10 +120,10 @@ class LiveBroker:
         return out
 
     def equity_oracle(self, quotes: dict[str, Quote]) -> float:
-        """Unified account: USDPR total already includes uPnL at mark
+        """Unified account: the collateral total already includes uPnL at mark
         (REPORT_NOTES E10), so swap mark uPnL for oracle uPnL."""
         spot = post(config.BASE_URL, {"type": "spotClearinghouseState", "user": config.TEAM})
-        total = float(next(b["total"] for b in spot["balances"] if b["coin"] == "USDPR"))
+        total = float(next(b["total"] for b in spot["balances"] if b["coin"] == config.COLLATERAL))
         adj = 0.0
         for p in self._state().get("assetPositions", []):
             pos = p["position"]

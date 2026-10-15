@@ -176,13 +176,15 @@ def main():
     a = ap.parse_args()
     setup_logging()
 
+    # state per dex, so positions remembered on par never carry over to the new dex
+    tag = "" if config.DEX == "par" else f"{config.DEX}_"
     if a.mode == "live":
         if os.environ.get("BOT_LIVE") != "yes" or not config.KEY_FILE:
             raise SystemExit("Live mode needs BOT_LIVE=yes and HL_API_KEY_FILE set.")
         broker = LiveBroker()
     else:
-        broker = PaperBroker(name=f"paper_{a.strategy}")
-    state = State(config.STATE_DIR / f"state_{a.mode}_{a.strategy}.json")
+        broker = PaperBroker(name=f"paper_{tag}{a.strategy}")
+    state = State(config.STATE_DIR / f"state_{tag}{a.mode}_{a.strategy}.json")
     strategy = {"drift": lambda: Drift(state), "combined": lambda: Combined(state),
                 "riskparity": RiskParity}[a.strategy]()
     alert("started", f"{a.mode} mode, strategy {strategy.name}", priority="low")

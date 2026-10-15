@@ -92,6 +92,16 @@
 - data/: first ~1 hour of recorded data from the laptop (Oct 5 evening).
 - historical/: organizers' historical/backtesting dataset.
 - balance.py: read-only balance, positions, equity at mark and at oracle.
+- check_dex.py: read-only new-DEX readiness check. `--find` lists dexes
+  made by the organizers' deployer (0x2457...e211, par's); `check_dex.py
+  <name>` shows markets, collateral, leverage, oracle vs mainnet twin,
+  team balance there, and prints the settings to use.
+- New-DEX switch: ONE setting, HL_DEX (default par), plus HL_COLLATERAL
+  (default USDPR) if the collateral token differs, read by bot/config.py,
+  balance.py, livefeed (shadow + maker), record_ws.py,
+  record_market_data.py. MARKETS if some bot markets are missing. The bot's
+  state files get a dex prefix off par (state_<dex>_live_combined.json),
+  so par's remembered positions never carry over.
 - test_trade.py: small capped test trade (plan/open/status/close/report).
 - bot/: trading bot. Paper mode by default: python -m bot.main
   (--rebalance-now, --once). Live needs BOT_LIVE=yes, --mode live and
@@ -185,11 +195,15 @@
   maker roughly break-even after fees (+0.7 to +2.0 bp, within noise) and
   the ML fair price did not beat the simple one (E36): no live maker as
   configured.
+- New-DEX switch ready (E37). On announcement: `python check_dex.py
+  --find`, then `python check_dex.py <name>`; on the bot VM add
+  `export HL_DEX=<name>` (and HL_COLLATERAL if shown) to ~/run_bot.sh and
+  restart; restart shadow/makers/recorders with HL_DEX set too.
 - Next: (1) optional: paper-test maker variants (wider offset, smaller
   size, ETH off) on the fixed code; (2) decide risk parity's role (it
-  drives most daily swings, E26); (3) switch everything to the new DEX
-  when announced; (4) move the main bot off bot1 before Nov 5; (5) start
-  the report (REPORT_NOTES.md has all experiments E1-E36).
+  drives most daily swings, E26); (3) switch to the new DEX when
+  announced (see above); (4) move the main bot off bot1 before Nov 5; (5) start
+  the report (REPORT_NOTES.md has all experiments E1-E37).
 
 ## Strategy direction
 - Most teams will use generic AI strategies; our edge should come from

@@ -1,6 +1,7 @@
-"""Show the team's balance and open positions on par. Read-only, no key needed.
+"""Show the team's balance and open positions on par (or HL_DEX). Read-only.
 
     python balance.py
+    HL_DEX=newdex HL_COLLATERAL=USDXX python balance.py
 """
 import os
 
@@ -8,7 +9,8 @@ import requests
 
 BASE_URL = os.environ.get("HL_BASE_URL", "https://api.hyperliquid-testnet.xyz")
 TEAM = os.environ.get("HL_TEAM_ADDRESS", "0xC9f1C5a784d2cd5858396299893e71cfe23F4aAf")
-DEX = "par"
+DEX = os.environ.get("HL_DEX", "par")
+COLLATERAL = os.environ.get("HL_COLLATERAL", "USDPR")
 
 
 def info(payload):
@@ -18,13 +20,13 @@ def info(payload):
 
 
 spot = info({"type": "spotClearinghouseState", "user": TEAM})
-usdpr = next((b for b in spot["balances"] if b["coin"] == "USDPR"), None)
+usdpr = next((b for b in spot["balances"] if b["coin"] == COLLATERAL), None)
 perp = info({"type": "clearinghouseState", "user": TEAM, "dex": DEX})
 meta, ctxs = info({"type": "metaAndAssetCtxs", "dex": DEX})
 oracle = {a["name"]: float(c["oraclePx"]) for a, c in zip(meta["universe"], ctxs)}
 
 cash = float(usdpr["total"]) if usdpr else 0.0
-print(f"USDPR balance: {cash:,.2f}  (held as margin: {float(usdpr['hold']) if usdpr else 0:,.2f})")
+print(f"{COLLATERAL} balance: {cash:,.2f}  (held as margin: {float(usdpr['hold']) if usdpr else 0:,.2f})")
 
 positions = [p["position"] for p in perp.get("assetPositions", [])]
 upnl_mark = upnl_oracle = 0.0
