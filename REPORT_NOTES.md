@@ -855,6 +855,46 @@ overall margin shrank (0.05 vs 0.16): part of the edge is regime-dependent.
 effective sample is far smaller than 1M; R2 on oracle moves is not P&L
 (the maker A/B tests whether it pays).
 
+## E36. Paper maker A/B (gbm vs base fair price), 29 h; replay bug (Oct 15)
+**Ran:** two paper makers on the bot VM (`bot/maker.py --fair gbm` and
+`--fair base`, defaults: BTC/ETH/HYPE, $500 quotes at centre +-6 bp, cap
+$2,000), Oct 14 18:17 -> Oct 15 ~20:12 UTC. Scored with
+`python -m backtest.eval_maker ~/eval` (maker CSVs + shadow logs; markouts
+from the shadow oracle).
+**Bug found:** the first score showed ~4,100 fills per variant with edge
+at fill -14 bp and fills dated 14:39 UTC, before the makers started. Cause:
+par's trades websocket sends a snapshot of recent (possibly hours-old)
+trades on every (re)connect, and the paper broker filled current quotes
+against them, timed at the old trade. Fixed in the paper broker (a trade
+fills only quotes placed before it; each trade once) and filtered in
+eval_maker (fills written > 10 s after their trade, and exact duplicates,
+dropped). About 87% of logged fills were replays (base 4,154 -> 545 kept,
+gbm 4,046 -> 536). Makers to be restarted with the fix (Oct 15).
+**Result after the filter (bp, markouts before the 3 bp fee):**
+
+| fair | fills | volume | edge at fill | mo 10 s | mo 60 s | mo 300 s (se) | net 300 s | P&L 300 s |
+|---|---|---|---|---|---|---|---|---|
+| base | 545 | $75.9k | +6.2 | +4.9 | +4.0 | +5.0 (1.6) | +2.0 | -$1.5 |
+| gbm | 536 | $74.0k | +6.1 | +4.8 | +3.1 | +3.7 (1.7) | +0.7 | +$7.6 |
+
+Per market (net 300 s): BTC base +3.1 / gbm +2.1; ETH -0.4 / -3.2; HYPE
++3.3 / +3.1. "Through" fills only (conservative): base +2.4, gbm +0.7.
+**Learned:** (1) after the fix the numbers are sensible: edge at fill
+~= the 6 bp quote offset, and markouts stay positive (no strong adverse
+selection), matching E33. (2) After the 3 bp fee the maker roughly breaks
+even: net +0.7 to +2.4 bp with a standard error of ~1.6 bp, i.e. not
+distinguishable from zero; P&L over 29 h is a few dollars on ~$75k volume.
+(3) The ML fair price did NOT beat the simple one here (gbm slightly
+worse at 60/300 s, within noise), although ML Model 1 forecasts the oracle
+better (E35): a better 15 s forecast does not by itself make quotes pay.
+(4) Fill-weighted P&L is worse than the per-fill average (base: +2.0 bp
+average but -$1.5): larger fills mark out worse, a sign that bigger
+trades through our quotes are better informed.
+**Caveats:** paper fills ignore queue position and order latency (live
+fills would be fewer and likely worse); one 29-hour window.
+**Decision:** do not run the maker live as configured. Possible next
+tests (paper, with the fixed code): wider offset, smaller size, ETH off.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
