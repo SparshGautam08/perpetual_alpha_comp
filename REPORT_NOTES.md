@@ -954,6 +954,27 @@ independent; score field ranges are guesses.
 only; set it on the bot VM before Oct 19 so the last practice days test
 the drift-only setup live. Decision pending (team).
 
+## E39. ML filter for drift entries (Oct 15) -- LOCKED before any result
+**Idea:** drift assumes par's price returns to the oracle. When the oracle
+is instead about to move toward par's price (par traders already knew),
+the gap closes from the wrong side and drift loses (E19 adverse
+selection). ML Model 1 forecasts exactly that move (15 s ahead).
+**Rule (fixed now, no tuning):** at each entry check, adjust the
+executable edge by the model's predicted oracle move p (bp): short entry
+uses sell_edge - p, long entry uses buy_edge + p; enter only if the
+adjusted edge >= 30 bp (the live threshold). Exits unchanged. Missing
+prediction (warm-up, gaps) -> p = 0 (plain drift), count reported.
+**Model:** GBM with the E23 settings, trained ONLY on data up to
+2026-10-09 23:09 UTC (DESIGN_END, as in E27).
+**Test:** Oct 9 23:09 UTC -> end of laptop data (Oct 13), drift v2b (30 bp,
+10 bp exit, 12 h, $25k, 200 bp stop, 10 markets), 15 s checks, ML-filtered
+vs plain on the same data.
+**Success criterion:** filtered net P&L > plain net P&L on the test window.
+Also reported: trades, win rate, net excluding oracle moves, skipped
+trades' P&L. A second check on post-Oct-13 data (bot VM) follows.
+**Note:** this window was used in E27 (drift v2b, model R2), but never for
+this filter rule.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
