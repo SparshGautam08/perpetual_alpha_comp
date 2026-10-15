@@ -19,12 +19,10 @@
   futures, prediction markets, mainnet Hyperliquid data.
 - Balances reset when the live competition starts (confirmed Oct 7), so
   pre-competition test trades don't affect the scored bankroll.
-- Practice trades don't count toward the 10-trading-day or minimum-volume
-  rules; those apply only to the live competition (confirmed Oct 7).
 - Official site: https://perpetual-alpha26.github.io (docs, FAQ, schedule).
   Contact: perpetual-alpha@googlegroups.com. Part of ICAIF 2026.
 - Dates: practice from Oct 5 (non-scored); SCORED PHASE Oct 19 - Nov 6
-  (~19 days, must trade on >= 10 of them); report + code due Nov 6;
+  (~19 days; >= 1 trade needed to be ranked); report + code due Nov 6;
   winners present at ICAIF Milan, Nov 14-17.
 - Fees (official docs): taker 9 bp (matches our Oct 7 test trade),
   maker 3 bp, charged in USDPR per fill.
@@ -99,7 +97,7 @@
   (--rebalance-now, --once). Live needs BOT_LIVE=yes, --mode live and
   HL_API_KEY_FILE. Settings in bot/config.py (env overrides). Kill switch:
   touch bot/state/STOP (flatten + exit); bot/state/PAUSE (no orders).
-  Alerts via ntfy (NTFY_TOPIC env). Will run on its own new small VM.
+  Alerts via ntfy (NTFY_TOPIC env). Runs live on the bot VM (see below).
 - backtest/: backtester, baselines, leverage study, live market analysis.
 - ML Model 1 (oracle forecast): models/oracle_gbm_v1.joblib (+ baseline),
   trained by backtest/train_oracle_model.py; inputs in bot/features.py
@@ -110,7 +108,7 @@
   backtest/eval_shadow.py scores shadow logs.
 - bot/maker.py: ML maker (post-only quotes around the ML fair price).
   Paper by default (fills simulated from par's trade feed). Live needs its
-  OWN key (bot2, not yet created): BOT_LIVE=yes HL_MAKER_KEY_FILE=... It
+  OWN key (bot2, see Account): BOT_LIVE=yes HL_MAKER_KEY_FILE=... It
   writes its inventory to bot/state/maker_units_live.json; the combined bot
   excludes it. maker_test.py = the Oct 13 standalone micro-test.
 - SDK: hyperliquid-python-sdk==0.24.0, Python venv in .venv.
@@ -144,8 +142,10 @@
 - About 50 MB/day.
 
 ## Bot VM (Google Cloud, started Oct 8)
-- VM `bot` (e2-small: 2 vCPU, 2 GB; upgraded from e2-micro 1 GB on Oct 14 when memory ran low), us-central1, same project as the recorder. Runs the
-  bot LIVE 24/7: drift strategy (`--strategy drift`), key bot1.
+- VM `bot` (e2-small: 2 vCPU, 2 GB; upgraded from e2-micro 1 GB on Oct 14
+  when memory ran low), us-central1, same project as the recorder. Runs the
+  bot LIVE 24/7: `--strategy combined` (drift 30 bp + risk parity 0.25x),
+  key bot1. Also runs shadow mode and two paper makers (see Current status).
 - Code: ~/perpetual_alpha_comp, cloned with a READ-ONLY deploy key
   (~/.ssh/deploy_key, GitHub deploy key "bot VM (read-only)"). Python venv
   ~/venv (uv), installed from requirements.txt.
@@ -204,8 +204,4 @@
   dropped claims. Update it after every step, before committing.
 
 ## Week 1 plan (Oct 5-11)
-- Roles: infra (me), data/research, strategy/backtesting, risk/report.
-- Next: load the historical dataset, build a backtester with fees, run
-  baselines (buy-and-hold, equal-risk vol-targeted, simple trend) scored
-  on return and daily vol, analyze the first weekend close (Fri) and
-  reopen (Mon), set up a private GitHub repo for the team.
+- Done (historical data, backtester, baselines, weekend analysis, team repo).
