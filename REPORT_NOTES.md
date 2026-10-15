@@ -910,6 +910,50 @@ oracle within +-10 bp of its mainnet twin, only par found by the deployer
 today; paper bot `--once --strategy combined` runs with unchanged file
 names; HL_DEX override read correctly.
 
+## E38. Risk parity's role next to drift: turn it off (Oct 15)
+**Question:** risk parity (RP) drives most daily swings (E26) and was cut
+to 0.25x (E29); does it earn its place in the scored phase?
+**Method:** `python -m backtest.rp_role`. Drift v2b as live (30 bp, 10 bp
+exit, 12 h, $25k, 200 bp stop, all 10 markets) on the recorded par data
+checked every 15 s: daily P&L by exit day. RP = risk_parity_10v on CLEAN7
+(live universe) on the hourly history Apr 18 -> Oct 5 with all costs,
+scaled by L. A 19-day competition = one 19-day RP window (152) + 19 drift
+days resampled from the recorded ones (20 draws each), independent. Score
+proxy as E5 (field guesses narrow / wide). Drift also at half its P&L
+(live catches less than the backtest, E30).
+**Inputs:** drift 69 trades, 6 full days (Oct 7-12): $572/day mean, $517
+std (days 1,127 / 996 / -292 / 339 / 489 / 772). RP at L=1: daily mean
++0.025%, std 0.60%; median 19-day return +0.35%.
+**Results (drift at full backtest P&L):**
+
+| RP L | median return | p10 / p90 | P(loss) | daily std | score narrow | score wide |
+|---|---|---|---|---|---|---|
+| 0 | +1.09% | +0.81 / +1.35 | 0% | 0.05% | **45.5** | **44.0** |
+| 0.1 | +1.12% | +0.70 / +1.61 | 0.1% | 0.07% | 45.2 | 43.8 |
+| 0.25 (live) | +1.16% | +0.23 / +2.40 | 6% | 0.14% | 44.2 | 43.2 |
+| 0.5 | +1.24% | -0.65 / +3.80 | 13% | 0.27% | 42.4 | 42.3 |
+| 1.0 | +1.44% | -2.43 / +6.59 | 25% | 0.53% | 38.6 | 40.3 |
+
+At half drift P&L the ranking is the same (L=0: 44.4 / 43.6; L=0.25:
+42.8 / 42.8; P(loss) at 0.25 rises to 14%).
+**Live account (portfolio history):** equity 1,000,000 -> peak 1,003,373
+(Oct 12 02:50 UTC) -> 994,740 (Oct 15 20:46 UTC); the drops on Oct 12-14
+are mostly RP's long book in the Monday sell-off (E26) and after.
+**Learned:** RP adds almost no expected return (+0.07% per 19 days at
+0.25x: its history is a small long-market bet net of funding) but triples
+daily std and turns a ~0% chance of a losing competition into 6-14%. Under
+both field guesses the score falls monotonically with L; the best is L=0.
+RP's original reasons (activity, volume, E17) went away with the Oct 9
+rule change. Paper check: `LEVERAGE=0` with `--strategy combined` sets all
+RP targets to $0 and sells RP's positions; drift is unchanged.
+**Caveats:** only 6 drift days (resampling understates bad-regime risk,
+e.g. the new dex's market maker may close the gaps drift trades); RP
+history is hourly mainnet candles, not par fills; drift and RP assumed
+independent; score field ranges are guesses.
+**Recommendation:** run the scored phase with RP off (LEVERAGE=0), drift
+only; set it on the bot VM before Oct 19 so the last practice days test
+the drift-only setup live. Decision pending (team).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

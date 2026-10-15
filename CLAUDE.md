@@ -194,16 +194,17 @@
   29 h: R2 0.358 vs baseline 0.306, better in all 10 markets (E35); paper
   maker roughly break-even after fees (+0.7 to +2.0 bp, within noise) and
   the ML fair price did not beat the simple one (E36): no live maker as
-  configured.
+  configured; risk parity adds daily swings but almost no return:
+  backtest score is best with it OFF (E38, LEVERAGE=0; decision pending).
 - New-DEX switch ready (E37). On announcement: `python check_dex.py
   --find`, then `python check_dex.py <name>`; on the bot VM add
   `export HL_DEX=<name>` (and HL_COLLATERAL if shown) to ~/run_bot.sh and
   restart; restart shadow/makers/recorders with HL_DEX set too.
 - Next: (1) optional: paper-test maker variants (wider offset, smaller
-  size, ETH off) on the fixed code; (2) decide risk parity's role (it
-  drives most daily swings, E26); (3) switch to the new DEX when
+  size, ETH off) on the fixed code; (2) set LEVERAGE=0 in ~/run_bot.sh if
+  the team agrees (E38); (3) switch to the new DEX when
   announced (see above); (4) move the main bot off bot1 before Nov 5; (5) start
-  the report (REPORT_NOTES.md has all experiments E1-E37).
+  the report (REPORT_NOTES.md has all experiments E1-E38).
 
 ## Strategy direction
 - Most teams will use generic AI strategies; our edge should come from
