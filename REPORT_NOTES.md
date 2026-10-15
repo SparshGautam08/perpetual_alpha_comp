@@ -998,6 +998,14 @@ were the same gap entered one check later, not avoided.
 **Next:** second, independent check on post-Oct-13 live data (shadow
 predictions + the live bot's drift entries on the bot VM) before relying
 on it; meanwhile the live bot keeps plain drift.
+**Built into the bot (Oct 15):** `bot/mlsignal.py` reads the latest
+prediction per market from shadow mode's log on the same VM (no second
+model copy; predictions older than 5 s ignored -> plain drift). Drift logs
+"ML pred" with every entry even when the filter is off, which is the data
+for the second check. `DRIFT_ML_FILTER=yes` applies the E39 rule; default
+off. Tests (scratch script, fake shadow file + books): off -> unchanged
+entries; on with +10 bp prediction -> short skipped, long taken; -10 bp
+-> the reverse; stale or missing predictions -> plain drift.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp

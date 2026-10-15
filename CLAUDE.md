@@ -116,6 +116,11 @@
   logged, no trading; running on the bot VM since Oct 14 15:24 UTC, log
   ~/shadow.log, data ~/shadow/, ~/shadow_watchdog.sh in cron).
   backtest/eval_shadow.py scores shadow logs.
+- bot/mlsignal.py: the live bot reads ML Model 1's latest predictions from
+  shadow mode's log (SHADOW_DIR, default ~/shadow; older than 5 s =
+  ignored). Drift logs the prediction with every entry ("ML pred ... bp").
+  DRIFT_ML_FILTER=yes turns on the E39 filter (entry edge adjusted by the
+  predicted oracle move); default off. Needs shadow mode running.
 - bot/maker.py: ML maker (post-only quotes around the ML fair price).
   Paper by default (fills simulated from par's trade feed). Live needs its
   OWN key (bot2, see Account): BOT_LIVE=yes HL_MAKER_KEY_FILE=... It
@@ -154,8 +159,8 @@
 ## Bot VM (Google Cloud, started Oct 8)
 - VM `bot` (e2-small: 2 vCPU, 2 GB; upgraded from e2-micro 1 GB on Oct 14
   when memory ran low), us-central1, same project as the recorder. Runs the
-  bot LIVE 24/7: `--strategy combined` (drift 30 bp + risk parity 0.25x),
-  key bot1. Also runs shadow mode and two paper makers (see Current status).
+  bot LIVE 24/7: `--strategy combined` with LEVERAGE=0 since Oct 15 20:55
+  UTC (risk parity off, E38; i.e. drift 30 bp only), key bot1. Also runs shadow mode and two paper makers (see Current status).
 - Code: ~/perpetual_alpha_comp, cloned with a READ-ONLY deploy key
   (~/.ssh/deploy_key, GitHub deploy key "bot VM (read-only)"). Python venv
   ~/venv (uv), installed from requirements.txt.
@@ -176,8 +181,9 @@
 ## Current status (Oct 15) and next steps
 - Scored phase starts Oct 19 (new DEX, name not announced). Practice money
   resets then. Equity at oracle ~992,900 on Oct 14 (practice).
-- Running on the bot VM: live combined bot (drift 30 bp + risk parity at
-  0.25x + 200 bp catastrophe stop), shadow mode (ML predictions logged to
+- Running on the bot VM: live bot, drift 30 bp only (+ 200 bp catastrophe
+  stop; risk parity OFF since Oct 15 20:55 UTC, LEVERAGE=0 in
+  ~/run_bot.sh, backup ~/run_bot.sh.bak), shadow mode (ML predictions logged to
   ~/shadow/), and two PAPER makers (`--fair gbm` and `--fair base`, logs
   ~/maker_*.log, fills/markouts in
   ~/perpetual_alpha_comp/bot/state/maker_paper_*_*.csv), restarted Oct 15
@@ -195,16 +201,20 @@
   maker roughly break-even after fees (+0.7 to +2.0 bp, within noise) and
   the ML fair price did not beat the simple one (E36): no live maker as
   configured; risk parity adds daily swings but almost no return:
-  backtest score is best with it OFF (E38, LEVERAGE=0; decision pending).
+  backtest score is best with it OFF (E38), so it was switched off.
+  ML filter for drift entries passed its locked test narrowly (+$99 on 37
+  trades, E39); built into the bot, OFF until a second check on live data.
 - New-DEX switch ready (E37). On announcement: `python check_dex.py
   --find`, then `python check_dex.py <name>`; on the bot VM add
   `export HL_DEX=<name>` (and HL_COLLATERAL if shown) to ~/run_bot.sh and
   restart; restart shadow/makers/recorders with HL_DEX set too.
-- Next: (1) optional: paper-test maker variants (wider offset, smaller
-  size, ETH off) on the fixed code; (2) set LEVERAGE=0 in ~/run_bot.sh if
-  the team agrees (E38); (3) switch to the new DEX when
-  announced (see above); (4) move the main bot off bot1 before Nov 5; (5) start
-  the report (REPORT_NOTES.md has all experiments E1-E38).
+- Next: (1) ~Oct 18: second check of the E39 ML filter on live drift
+  entries since Oct 15 (bot.log "ML pred" + outcomes); turn on with
+  DRIFT_ML_FILTER=yes in ~/run_bot.sh only if it agrees; (2) switch to
+  the new DEX when announced (see above); (3) move the main bot off bot1
+  before Nov 5 (bot2 is free: no live maker); (4) back up the recorded
+  data (e.g. a Cloud Storage bucket) before Nov 6; (5) start the report
+  (REPORT_NOTES.md has all experiments E1-E39).
 
 ## Strategy direction
 - Most teams will use generic AI strategies; our edge should come from

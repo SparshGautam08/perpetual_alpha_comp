@@ -4,6 +4,8 @@ backtester so live and backtest weights match.
 
 A strategy is anything with target_weights() -> {coin: weight}, where
 weight = signed notional / equity. Swap in a better one later."""
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -11,6 +13,9 @@ from backtest.strategies import ewma_cov, risk_parity
 
 from . import config
 from .market import mainnet_hourly_returns
+from .mlsignal import latest_predictions
+
+log = logging.getLogger("bot")
 
 
 class RiskParity:
@@ -78,6 +83,9 @@ class Drift:
         """Returns {coin: (target_usd, reason)} for markets that should trade now."""
         entries = self.state.get("drift_entries", {})
         orders = {}
+        # ML Model 1's predicted 15 s oracle move (E39), read from shadow mode.
+        # Always logged with entries (for the live check); used only if ML_FILTER.
+        preds = latest_predictions(now_s)
         for coin in self.MARKETS:
             q = quotes.get(coin)
             if q is None or not q.ok():
@@ -103,12 +111,20 @@ class Drift:
             buy = fill_price(q.asks, self.NOTIONAL)
             sell_edge = (sell / q.oracle - 1) * 1e4 if sell else -1e9
             buy_edge = (1 - buy / q.oracle) * 1e4 if buy else -1e9
-            if sell_edge >= self.ENTRY_EDGE_BP:
+            p = preds.get(coin)
+            # E39 rule: a predicted oracle rise eats a short's edge and adds to a long's.
+            adj = p if (config.ML_FILTER and p is not None) else 0.0
+            ml = (f", ML pred {p:+.1f} bp" + (" (filter on)" if config.ML_FILTER else "")
+                  if p is not None else ", ML pred n/a")
+            if sell_edge - adj >= self.ENTRY_EDGE_BP:
                 orders[coin] = (-self.NOTIONAL, f"entry: sell ${self.NOTIONAL:,.0f} fills "
-                                f"{sell_edge:+.1f} bp vs oracle, funding {q.funding * 8760 * 100:+.0f}%/yr")
-            elif buy_edge >= self.ENTRY_EDGE_BP:
+                                f"{sell_edge:+.1f} bp vs oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")
+            elif buy_edge + adj >= self.ENTRY_EDGE_BP:
                 orders[coin] = (self.NOTIONAL, f"entry: buy ${self.NOTIONAL:,.0f} fills "
-                                f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr")
+                                f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")
+            elif config.ML_FILTER and p is not None and max(sell_edge, buy_edge) >= self.ENTRY_EDGE_BP:
+                log.info(f"ML filter: skip {coin} entry (sell {sell_edge:+.1f} / buy {buy_edge:+.1f} bp, "
+                         f"ML pred {p:+.1f} bp)")
         return orders
 
     def record(self, coin: str, now_s: float, opened: bool, oracle: float | None = None):

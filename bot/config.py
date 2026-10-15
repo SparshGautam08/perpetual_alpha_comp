@@ -40,6 +40,13 @@ MAX_WEIGHT = _env("MAX_WEIGHT", 0.30, float)       # per-market |weight| cap
 DAILY_LOSS_STOP = _env("DAILY_LOSS_STOP", 0.02, float)  # flatten at -2% on the day
 MAX_SPREAD_BP = _env("MAX_SPREAD_BP", 100, float)  # skip a market if book looks broken
 
+# --- ML filter for drift entries (REPORT_NOTES E39) ---
+# yes = judge drift entries on the edge adjusted by ML Model 1's predicted
+# 15 s oracle move, read from shadow mode's log on the same machine.
+ML_FILTER = _env("DRIFT_ML_FILTER", "no").lower() == "yes"
+SHADOW_DIR = _env("SHADOW_DIR", "~/shadow")
+ML_MAX_AGE_S = _env("ML_MAX_AGE_S", 5, float)   # older predictions are ignored
+
 # --- Execution ---
 MAX_ORDER_USD = _env("MAX_ORDER_USD", 25_000, float)  # slice bigger trades
 # Worst accepted price vs the MID (not the best quote: tiny orders sometimes
