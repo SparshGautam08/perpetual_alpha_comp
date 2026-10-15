@@ -954,7 +954,7 @@ independent; score field ranges are guesses.
 only; set it on the bot VM before Oct 19 so the last practice days test
 the drift-only setup live. Decision pending (team).
 
-## E39. ML filter for drift entries (Oct 15) -- LOCKED before any result
+## E39. ML filter for drift entries (Oct 15): locked test PASSED narrowly
 **Idea:** drift assumes par's price returns to the oracle. When the oracle
 is instead about to move toward par's price (par traders already knew),
 the gap closes from the wrong side and drift loses (E19 adverse
@@ -974,6 +974,30 @@ Also reported: trades, win rate, net excluding oracle moves, skipped
 trades' P&L. A second check on post-Oct-13 data (bot VM) follows.
 **Note:** this window was used in E27 (drift v2b, model R2), but never for
 this filter rule.
+**Result** (`python -m backtest.ml_drift_filter`): model trained Oct 7
+22:44 -> Oct 9 23:09 UTC (1.74M rows); test R2 0.324 (same as E27, so the
+pipeline matches). Test Oct 9 23:09 -> Oct 13 00:02 UTC, 15 s checks, 0.9%
+of checks without a prediction.
+
+| | plain | ML filter |
+|---|---|---|
+| trades / win rate | 37 / 73% | 38 / 76% |
+| net | +$1,601 | **+$1,700** |
+| excl. oracle moves | +$1,804 | +$1,571 |
+| entry edge / exit / oracle move / fees | +3,464 / -54 / -204 / -1,665 | +3,298 / -73 / +128 / -1,710 |
+
+17 plain entries were skipped or delayed (their net +$611) and 18 entries
+happened only with the filter (+$710); per market the change is mainly
+EWY (+$108), HYPE (+$37), ETH (-$61). **Criterion PASSED (+$99, +6%).**
+**Learned:** the filter works in the intended direction: the oracle-move
+part of P&L goes from -$204 to +$128 (fewer gaps closed by the oracle
+moving against us), at the cost of some entry edge (entering on a later
+check). But the gain is small against the noise of 37 trades (one trade
+is ~$50-600), so this is weak evidence, not proof. Most "skipped" trades
+were the same gap entered one check later, not avoided.
+**Next:** second, independent check on post-Oct-13 live data (shadow
+predictions + the live bot's drift entries on the bot VM) before relying
+on it; meanwhile the live bot keeps plain drift.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp

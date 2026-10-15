@@ -218,10 +218,12 @@ GRID_V2 = {"entry_edge_bp": [15, 20, 30, 40], "exit_cost_bp": [5, 10, 15],
 
 
 def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
-                need_funding, flip=False, stop_bp=None) -> list[dict]:
+                need_funding, flip=False, stop_bp=None, pred=None) -> list[dict]:
     """Enter when a $NOTIONAL fill is >= entry_edge_bp better than the
     oracle (sell above it / buy below it); exit when closing would cost at
-    most exit_cost_bp vs the oracle, or after max_hold_h."""
+    most exit_cost_bp vs the oracle, or after max_hold_h.
+    pred (E39): optional predicted oracle move per row (bp); entries then
+    use the edge adjusted by it (short: sell_edge - pred, long: buy_edge + pred)."""
     t = g["time"].to_numpy()
     hour = g["time"].dt.floor("h").to_numpy()
     o = g["oraclePx"].to_numpy()
@@ -262,9 +264,10 @@ def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
         if last_in_seg:
             continue
         side = 0
-        if sell_edge[i] >= entry_edge_bp:
+        p_i = 0.0 if pred is None or np.isnan(pred[i]) else pred[i]
+        if sell_edge[i] - p_i >= entry_edge_bp:
             side = -1
-        elif buy_edge[i] >= entry_edge_bp:
+        elif buy_edge[i] + p_i >= entry_edge_bp:
             side = 1
         if side == 0:
             continue
