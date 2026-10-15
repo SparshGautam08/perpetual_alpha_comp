@@ -25,8 +25,10 @@ def load_fills(folder):
     rows = []
     for f in sorted(folder.glob("maker_paper_*_*.csv")):
         fair = f.name.split("_")[2]
-        d = pd.read_csv(f)
+        d = pd.read_csv(f, dtype={"detail": str})
         fl = d[d.event == "fill"].copy()
+        if fl.empty:        # e.g. a false start that only quoted
+            continue
         fl["fair"] = fair
         fl["edge_bp"] = pd.to_numeric(fl.detail.str.extract(r"edge_bp=(\S+)")[0], errors="coerce")
         fl["through"] = fl.detail.str.extract(r"through=(\S+)")[0] == "True"
@@ -40,7 +42,7 @@ def load_fills(folder):
                           on=["t_fill", "coin", "side", "px", "sz"], how="left")
         rows.append(fl)
     if not rows:
-        sys.exit(f"no maker_paper_*_*.csv in {folder}")
+        sys.exit(f"no maker fills in {folder}")
     return pd.concat(rows, ignore_index=True)
 
 
