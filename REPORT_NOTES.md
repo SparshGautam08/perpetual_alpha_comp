@@ -824,6 +824,37 @@ sells, $182), edge at fill +5.2 bp, markout 10 s -3.6 / 60 s -5.9 / 300 s
 0.0 bp. n = 2, meaningless. The laptop fell 143 s behind again; long runs
 go on the VM.
 
+## E35. Shadow mode, first long live run: ML Model 1 holds up (Oct 15)
+**Ran:** `bot/shadow.py` on the bot VM, Oct 14 15:29 -> Oct 15 20:16 UTC
+(28.8 h, 1,029,285 scored predictions, all 10 markets). Model trained on
+data up to Oct 13 00:01 UTC, so every prediction here is out of sample.
+Reproduce: `python -m backtest.eval_shadow ~/shadow` (on the bot VM).
+**Result (R2 of the next-15 s oracle move):** GBM 0.358 vs baseline 0.306
+(corr 0.599 vs 0.562). E27 out-of-sample test: GBM 0.324, baseline 0.160.
+
+| market | R2 GBM | R2 base | mean abs 15 s move (bp) |
+|---|---|---|---|
+| BRENT | 0.504 | 0.461 | 1.74 |
+| BTC | 0.317 | 0.260 | 2.04 |
+| ETH | 0.298 | 0.264 | 3.00 |
+| EWJ | 0.333 | 0.124 | 0.79 |
+| EWY | 0.455 | 0.413 | 3.89 |
+| GOLD | 0.271 | -0.014 | 1.03 |
+| HYPE | 0.289 | 0.250 | 4.12 |
+| SP500 | 0.527 | 0.461 | 0.65 |
+| USDEUR | 0.234 | -0.272 | 0.24 |
+| USDJPY | 0.328 | -0.167 | 0.31 |
+
+**Learned:** (1) the live input pipeline matches training: live R2 is at
+least as good as the offline test, so no train/live mismatch. (2) GBM
+beats the baseline in all 10 markets; the gain is largest where the
+baseline fails (GOLD, USDEUR, USDJPY, EWJ: baseline R2 negative or low).
+(3) The baseline did much better than in E27 (0.31 vs 0.16), so the GBM's
+overall margin shrank (0.05 vs 0.16): part of the edge is regime-dependent.
+**Caveats:** one 29-hour window; seconds overlap (15 s horizons), so the
+effective sample is far smaller than 1M; R2 on oracle moves is not P&L
+(the maker A/B tests whether it pays).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
