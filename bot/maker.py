@@ -20,7 +20,9 @@ never mistakes it for risk parity's. Live needs its OWN API key (bot2):
 one key per running process.
 Paper mode: a resting quote is filled when par's trade feed shows a trade
 at ("touch", optimistic) or through ("through", conservative) its price
-on the side that would hit it.
+on the side that would hit it, timed after the quote was placed (the
+feed replays old trades on every reconnect; before Oct 15 those made
+bogus fills, E36).
 Every fill is logged with the oracle at the fill's own second and markouts
 at 10 s / 60 s / 300 s (oracle-based, in bp, positive = good for us).
 """
@@ -57,13 +59,15 @@ class PaperMaker:
         self.resting = {}        # oid -> {coin, side, px, sz}
         self.next_oid = 1
         self.fills = []          # pending fills for the strategy to collect
+        self.seen = set()        # trade ids already matched (reconnects replay recent trades)
         self.lock = threading.Lock()
 
     def place(self, coin, side, px, sz):
         with self.lock:
             oid = self.next_oid
             self.next_oid += 1
-            self.resting[oid] = {"coin": coin, "side": side, "px": px, "sz": sz}
+            self.resting[oid] = {"coin": coin, "side": side, "px": px, "sz": sz,
+                                 "t_ms": int(time.time() * 1000)}
             return oid
 
     def cancel(self, coin, oid):
@@ -77,8 +81,17 @@ class PaperMaker:
         """A real par trade. 'A' = a seller hit the bid; 'B' = a buyer lifted the ask."""
         px, sz, agg = float(tr["px"]), float(tr["sz"]), tr["side"]
         with self.lock:
+            # The trades feed starts each (re)connect with a snapshot of recent,
+            # possibly hours-old trades: each trade counts once, and only for
+            # quotes that were already resting when it happened.
+            key = (coin, tr.get("tid"), tr["time"], tr["px"], tr["sz"])
+            if key in self.seen:
+                return
+            if len(self.seen) > 200_000:
+                self.seen.clear()
+            self.seen.add(key)
             for oid, q in list(self.resting.items()):
-                if q["coin"] != coin:
+                if q["coin"] != coin or tr["time"] < q["t_ms"]:
                     continue
                 hit = (q["side"] == "buy" and agg == "A" and px <= q["px"]) or \
                       (q["side"] == "sell" and agg == "B" and px >= q["px"])

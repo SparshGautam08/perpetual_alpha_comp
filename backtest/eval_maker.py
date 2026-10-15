@@ -8,7 +8,13 @@ optionally, shadow_*.csv. Markouts are recomputed from the shadow log's
 oracle (one row per market per second) when it is there, so fills whose
 markout the maker never logged (process restarted) still count; otherwise
 the maker's own markout rows are used. Only the time window covered by
-every variant is compared. Markout = side x (oracle at t+h - fill px) / px
+every variant is compared.
+
+Replayed trades (E36): before the Oct 15 fix the paper maker also filled
+quotes against the old trades the feed replays on every reconnect. Such a
+fill is written long after its trade time, so fills logged more than
+STALE_S after their trade (judged from the quote/markout rows written
+before them) and exact duplicates are dropped and counted. Markout = side x (oracle at t+h - fill px) / px
 in bp, before the 3 bp maker fee; "net" columns subtract the fee.
 """
 import sys
@@ -19,6 +25,7 @@ import pandas as pd
 
 HS = (10, 60, 300)
 FEE_BP = 3.0
+STALE_S = 10
 
 
 def load_fills(folder):
@@ -26,6 +33,8 @@ def load_fills(folder):
     for f in sorted(folder.glob("maker_paper_*_*.csv")):
         fair = f.name.split("_")[2]
         d = pd.read_csv(f, dtype={"detail": str})
+        # earliest possible write time of each row: latest quote/markout time above it
+        d["written_ms"] = d.t_ms.where(d.event != "fill").cummax().ffill()
         fl = d[d.event == "fill"].copy()
         if fl.empty:        # e.g. a false start that only quoted
             continue
@@ -81,6 +90,16 @@ def summarize(g):
 def main():
     folder = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "server_data"
     fl = load_fills(folder)
+    lag = (fl.written_ms - fl.t_ms) / 1000
+    stale = lag > STALE_S
+    dup = fl.duplicated(["fair", "t_ms", "coin", "side", "px", "sz"]) & ~stale
+    print(f"Fills logged: {len(fl):,}; dropped as replayed old trades (written > {STALE_S} s after "
+          f"the trade): {stale.sum():,} (median delay {lag[stale].median() / 60:.0f} min); "
+          f"duplicates: {dup.sum():,}; kept {(~stale & ~dup).sum():,}")
+    for fair, g in fl.groupby("fair"):
+        print(f"  {fair:5s} kept {(~(stale | dup))[g.index].sum():,} of {len(g):,}")
+    print()
+    fl = fl[~stale & ~dup]
     span = fl.groupby("fair").t_ms.agg(["min", "max"])
     t0, t1 = span["min"].max(), span["max"].min()
     for fair, r in span.iterrows():
