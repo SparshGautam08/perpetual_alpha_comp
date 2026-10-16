@@ -82,11 +82,15 @@
     activeAssetData availableToTrade / maxTradeSzs work in both modes.
   - No per-team position limits on-chain: only the market-wide OI caps,
     max leverage and the order/request limits.
-  - Manual intervention IS allowed (stopping the bot, closing positions
-    by hand), and the bot can be updated during the competition
-    (answered earlier in #ask-anything, per the team).
+  - Bot UPDATES during the live phase are allowed (ftaran, Oct 9: "Yes,
+    of course"). Manual intervention (stopping the bot, closing by hand)
+    was asked Oct 16 but NOT answered; the About page says "Fully manual
+    trading is not allowed: entries must be algorithmic". So: safety
+    stops/closes via the bot's kill switch are the safe route; never
+    place entries by hand.
 - Still unanswered: time and valuation (mark vs oracle) of the daily
-  equity snapshot; exact end time on Nov 6.
+  equity snapshot; exact end time on Nov 6; whether inactive/liquidated
+  teams count in the normalization; manual intervention.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
