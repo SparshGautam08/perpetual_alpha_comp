@@ -40,6 +40,14 @@ MAX_WEIGHT = _env("MAX_WEIGHT", 0.30, float)       # per-market |weight| cap
 DAILY_LOSS_STOP = _env("DAILY_LOSS_STOP", 0.02, float)  # flatten at -2% on the day
 MAX_SPREAD_BP = _env("MAX_SPREAD_BP", 100, float)  # skip a market if book looks broken
 
+# --- Eligibility safeguard (bot/eligibility.py) ---
+# >= 1 fill in the scored phase is needed to be ranked. If ELIG_TRADE_BY
+# (ISO UTC, e.g. 2026-10-20T20:00:00Z) has passed and the account has no
+# fill on DEX since SCORED_START, make one ~ELIG_USD round trip. Empty = off.
+SCORED_START = _env("SCORED_START", "2026-10-19T12:00:00Z")
+ELIG_TRADE_BY = _env("ELIG_TRADE_BY", "")
+ELIG_USD = _env("ELIG_USD", 15.0, float)
+
 # --- ML filter for drift entries (REPORT_NOTES E39) ---
 # yes = judge drift entries on the edge adjusted by ML Model 1's predicted
 # 15 s oracle move, read from shadow mode's log on the same machine.

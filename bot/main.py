@@ -21,7 +21,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from . import config
+from . import config, eligibility
 from .alerts import alert
 from .broker import LiveBroker, PaperBroker
 from .execution import flatten, rebalance, trade_to
@@ -117,6 +117,8 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
 
     if config.PAUSE_FILE.exists():
         return True
+
+    eligibility.check(broker, state)
 
     if config.REBALANCE_FILE.exists():
         force_rebalance = True

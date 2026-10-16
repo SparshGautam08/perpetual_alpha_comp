@@ -1007,6 +1007,21 @@ off. Tests (scratch script, fake shadow file + books): off -> unchanged
 entries; on with +10 bp prediction -> short skipped, long taken; -10 bp
 -> the reverse; stale or missing predictions -> plain drift.
 
+## E40. Live-dex readiness on pas; eligibility safeguard (Oct 16, infrastructure)
+**pas (announced Oct 16):** `check_dex.py pas`: 10 markets, collateral
+USDP, oracles within +-11 bp of the mainnet twins, OI cap $10M per market,
+our USDP balance 0, no trades yet, but market makers already quote
+(spreads 9-15 bp; EWY bid ~90 bp above its oracle). Paper bot
+`--once` with HL_DEX=pas HL_COLLATERAL=USDP: reads all markets, writes
+separate pas_ state files. A pas recorder runs on the bot VM from Oct 16.
+**Eligibility safeguard (`bot/eligibility.py`):** to be ranked a team needs
+>= 1 fill in the scored phase. If ELIG_TRADE_BY has passed with no fill on
+the dex since SCORED_START, the bot makes one ~$15 round trip and stops.
+Tests (paper, real pas books): off -> nothing; deadline in the future ->
+nothing; deadline passed, no fills -> BTC round trip 0.00018 BTC, position
+back to 0, cost $0.04, alert; second run -> nothing; account with fills
+(par, 57 since Oct 15) -> "nothing to do".
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

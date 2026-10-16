@@ -156,6 +156,11 @@
   ignored). Drift logs the prediction with every entry ("ML pred ... bp").
   DRIFT_ML_FILTER=yes turns on the E39 filter (entry edge adjusted by the
   predicted oracle move); default off. Needs shadow mode running.
+- bot/eligibility.py: >= 1 scored fill safeguard. If ELIG_TRADE_BY (ISO
+  UTC) has passed and the team has no fill on HL_DEX since SCORED_START
+  (default 2026-10-19T12:00:00Z), the bot makes ONE ~$15 round trip (buy,
+  close exactly that) in a market it doesn't hold, alerts, and never acts
+  again. Checks every 10 min. Off when ELIG_TRADE_BY is empty (default).
 - bot/maker.py: ML maker (post-only quotes around the ML fair price).
   Paper by default (fills simulated from par's trade feed). Live needs its
   OWN key (bot2, see Account): BOT_LIVE=yes HL_MAKER_KEY_FILE=... It
@@ -242,9 +247,14 @@
 - New-DEX switch ready (E37); live dex announced Oct 16: `pas`. Before
   Mon Oct 19 12:00 UTC: `check_dex.py pas` (USDP funded? markets
   trading?), then on the bot VM add `export HL_DEX=pas` and
-  `export HL_COLLATERAL=USDP` to ~/run_bot.sh and restart; restart shadow
-  with HL_DEX=pas too. Start recording pas (record_ws.py with HL_DEX=pas,
-  on the recorder VM) as soon as it trades, to re-check drift's gaps there.
+  `export HL_COLLATERAL=USDP` (and `export
+  ELIG_TRADE_BY=2026-10-20T20:00:00Z`, the eligibility safeguard) to
+  ~/run_bot.sh and restart; restart shadow
+  with HL_DEX=pas too. pas recorder: on the BOT VM since Oct 16 (`HL_DEX=pas
+  record_ws.py --venue par --out ~/data_pas`, log ~/record_pas.log, no
+  watchdog; not on the recorder VM because its watchdog pattern
+  "record_ws.py --out" would match it). Oct 16: pas books already quoted
+  (9-15 bp spreads), EWY ~90 bp above its oracle.
 - Next: (1) ~Oct 18: second check of the E39 ML filter on live drift
   entries since Oct 15 (bot.log "ML pred" + outcomes); turn on with
   DRIFT_ML_FILTER=yes in ~/run_bot.sh only if it agrees; (2) switch to
