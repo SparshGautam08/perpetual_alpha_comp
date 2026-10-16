@@ -1020,7 +1020,10 @@ informed. Our trade data (E22) can confirm who quotes by address.
 ## Open questions for organizers
 (Oct 9-10 answers from Discord #ask-anything: eligibility = >= 1 trade, no
 volume or day minimum; new DEX for the live phase; deadline Nov 6; bot
-updates allowed; funding parameters = mainnet. See CLAUDE.md.)
+updates allowed; funding parameters = mainnet. Oct 12-16: live dex `pas`
+(collateral USDP), scored trading from Mon Oct 19 12:00 UTC, par halted
+Oct 19 and settled at mark, funding formula, no per-team position limits.
+See CLAUDE.md.)
 - Does daily equity for the std score use oracle or mark?
 - ~~Fees on par?~~ Taker 9 bp, maker 3 bp (official docs).
 - ~~Is the balance reset at the start?~~ Yes (confirmed Oct 7).

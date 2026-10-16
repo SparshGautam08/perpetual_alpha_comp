@@ -2,7 +2,9 @@
 
 ## Competition
 - Trading-bot competition on a HIP-3 perps exchange on Hyperliquid testnet.
-- Exchange (dex) name: `par`. Collateral: USDPR (token 3032).
+- Practice dex: `par` ("Perpetual Alpha Rehearsal"), collateral USDPR
+  (token 3032). LIVE (scored) dex: `pas` ("Perpetual Alpha"), collateral
+  USDP (token 3307), same 10 markets (organizers, Oct 16).
 - 10 markets: par:BTC, par:ETH, par:HYPE, par:SP500, par:EWY, par:EWJ,
   par:BRENT, par:GOLD, par:USDEUR, par:USDJPY.
 - Scoring (each min-max normalized across teams):
@@ -21,8 +23,9 @@
   pre-competition test trades don't affect the scored bankroll.
 - Official site: https://perpetual-alpha26.github.io (docs, FAQ, schedule).
   Contact: perpetual-alpha@googlegroups.com. Part of ICAIF 2026.
-- Dates: practice from Oct 5 (non-scored); SCORED PHASE Oct 19 - Nov 6
-  (~19 days; >= 1 trade needed to be ranked); report + code due Nov 6;
+- Dates: practice from Oct 5 (non-scored); SCORED PHASE starts Mon Oct 19
+  12:00 UTC (7:00 AM CT) on `pas`, ends Nov 6 (exact time not announced);
+  >= 1 trade needed to be ranked; report + code due Nov 6;
   winners present at ICAIF Milan, Nov 14-17.
 - Fees (official docs): taker 9 bp (matches our Oct 7 test trade),
   maker 3 bp, charged in USDPR per fill.
@@ -54,8 +57,34 @@
     i.e. +-2-5%, of the oracle). Pre-trade capacity: availableToTrade from
     activeAssetData (team address, coin e.g. par:BTC) = free collateral per
     side; maxTradeSzs = availableToTrade x leverage / markPx.
-- Unknown: per-market position limits (exist, figures not published);
-  new DEX name and markets.
+- Organizer answers (Discord #ask-anything, Oct 12-16):
+  - Live dex is `pas` (Oct 16: "PA is not the right one"; an earlier answer
+    named `pa`). Same ten markets, oracle, fees and funding parameters as
+    par. Deployer 0xa89c...0e25 (NOT par's; look-alike dexes exist, e.g.
+    `parx`, `pa`: go by the organizers' name). check_dex.py on Oct 16:
+    oracles within +-11 bp of the mainnet twins, OI cap $10M per market
+    (all teams together; par had $500M), BTC szDecimals 5 (par 4), our
+    USDP balance 0 (not funded yet), no trading yet.
+  - Scored trading starts Monday Oct 19 12:00 UTC.
+  - par is halted on Oct 19; open positions there are settled at mark.
+  - Funding: settled hourly on the hour (UTC); rate = multiplier x (P +
+    clamp(0.01% - P, +-clamp)) / 8, P = premium (impact px vs oracle)
+    sampled every 5 s and averaged over the hour; multiplier 1 for
+    BTC/ETH/HYPE, 0.5 others; interest term 0 for FX; clamp +-0.05% for
+    BTC/ETH/HYPE. Paid on size x ORACLE x rate. Use fundingHistory for
+    settled values (the ctx field is the running estimate).
+  - Request budget applies in every mode (10,000 + 1 per $1 traded on the
+    dex, then 1 request / 10 s); a batch of n orders counts n; cancels have
+    a separate, higher limit.
+  - A reduce-only order closing the WHOLE position goes through below $10.
+  - Equity: unified mode = spotClearinghouseState collateral balance (+
+    uPnL); Standard = clearinghouseState(dex) marginSummary.accountValue.
+    activeAssetData availableToTrade / maxTradeSzs work in both modes.
+  - No per-team position limits on-chain: only the market-wide OI caps,
+    max leverage and the order/request limits.
+- Still unanswered: time and valuation (mark vs oracle) of the daily
+  equity snapshot; exact end time on Nov 6; whether manual intervention
+  (stopping the bot, closing by hand) is allowed.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
@@ -93,7 +122,7 @@
 - historical/: organizers' historical/backtesting dataset.
 - balance.py: read-only balance, positions, equity at mark and at oracle.
 - check_dex.py: read-only new-DEX readiness check. `--find` lists dexes
-  made by the organizers' deployer (0x2457...e211, par's); `check_dex.py
+  by par's deployer or with "Perpetual Alpha" in the name; `check_dex.py
   <name>` shows markets, collateral, leverage, oracle vs mainnet twin,
   team balance there, and prints the settings to use.
 - New-DEX switch: ONE setting, HL_DEX (default par), plus HL_COLLATERAL
@@ -178,7 +207,7 @@
   within 5 min with the new code).
 - Only ONE live bot per account: don't run it on a laptop at the same time.
 
-## Current status (Oct 15) and next steps
+## Current status (Oct 16) and next steps
 - Scored phase starts Oct 19 (new DEX, name not announced). Practice money
   resets then. Equity at oracle ~992,900 on Oct 14 (practice).
 - Running on the bot VM: live bot, drift 30 bp only (+ 200 bp catastrophe
@@ -204,14 +233,16 @@
   backtest score is best with it OFF (E38), so it was switched off.
   ML filter for drift entries passed its locked test narrowly (+$99 on 37
   trades, E39); built into the bot, OFF until a second check on live data.
-- New-DEX switch ready (E37). On announcement: `python check_dex.py
-  --find`, then `python check_dex.py <name>`; on the bot VM add
-  `export HL_DEX=<name>` (and HL_COLLATERAL if shown) to ~/run_bot.sh and
-  restart; restart shadow/makers/recorders with HL_DEX set too.
+- New-DEX switch ready (E37); live dex announced Oct 16: `pas`. Before
+  Mon Oct 19 12:00 UTC: `check_dex.py pas` (USDP funded? markets
+  trading?), then on the bot VM add `export HL_DEX=pas` and
+  `export HL_COLLATERAL=USDP` to ~/run_bot.sh and restart; restart shadow
+  with HL_DEX=pas too. Start recording pas (record_ws.py with HL_DEX=pas,
+  on the recorder VM) as soon as it trades, to re-check drift's gaps there.
 - Next: (1) ~Oct 18: second check of the E39 ML filter on live drift
   entries since Oct 15 (bot.log "ML pred" + outcomes); turn on with
   DRIFT_ML_FILTER=yes in ~/run_bot.sh only if it agrees; (2) switch to
-  the new DEX when announced (see above); (3) move the main bot off bot1
+  pas before Mon Oct 19 12:00 UTC (see above); (3) move the main bot off bot1
   before Nov 5 (bot2 is free: no live maker); (4) back up the recorded
   data (e.g. a Cloud Storage bucket) before Nov 6; (5) start the report
   (REPORT_NOTES.md has all experiments E1-E39).

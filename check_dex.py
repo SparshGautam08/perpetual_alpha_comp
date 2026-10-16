@@ -1,6 +1,6 @@
 """Is everything ready for a dex? Read-only, no key needed.
 
-    python check_dex.py --find        # list dexes made by the organizers' deployer
+    python check_dex.py --find        # list the competition's dexes
     python check_dex.py newdex        # check one dex (default: HL_DEX or par)
 
 The live phase runs on a NEW dex (name announced late). This shows its
@@ -31,17 +31,19 @@ def info(url, payload):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("dex", nargs="?", default=os.environ.get("HL_DEX", "par"))
-    ap.add_argument("--find", action="store_true", help="list dexes by the organizers' deployer")
+    ap.add_argument("--find", action="store_true", help="list the competition's dexes")
     a = ap.parse_args()
 
     dexes = {d["name"]: d for d in info(TESTNET, {"type": "perpDexs"}) if d}
     if a.find:
+        # The live dex (pas) was NOT deployed by par's deployer, so match the
+        # name too ("Perpetual Alpha ...").
         deployer = dexes["par"]["deployer"]
-        print(f"Dexes deployed by {deployer} (par's deployer, the organizers):")
+        print("Competition dexes (par's deployer, or 'Perpetual Alpha' in the name):")
         for d in dexes.values():
-            if d["deployer"] == deployer:
+            if d["deployer"] == deployer or "perpetual alpha" in (d.get("fullName") or "").lower():
                 print(f"  {d['name']:12s} {d.get('fullName', '')}  "
-                      f"({len(d.get('assetToStreamingOiCap', []))} markets)")
+                      f"({len(d.get('assetToStreamingOiCap', []))} markets, deployer {d['deployer']})")
         return
 
     if a.dex not in dexes:
