@@ -1006,6 +1006,15 @@ for the second check. `DRIFT_ML_FILTER=yes` applies the E39 rule; default
 off. Tests (scratch script, fake shadow file + books): off -> unchanged
 entries; on with +10 bp prediction -> short skipped, long taken; -10 bp
 -> the reverse; stale or missing predictions -> plain drift.
+**Turned ON for the scored phase (Oct 18, before the start):** the team
+chose to run the filter live from day one rather than wait for the second
+check, because (1) it passed its locked test, (2) its effect per entry is
+small (predictions usually +-1-4 bp vs the 30 bp threshold) and it falls
+back to plain drift when predictions are stale, and (3) every entry logs
+its prediction and every filtered entry logs "ML filter: skip", so its
+live effect can be measured on pas and the filter switched off if it
+hurts. Evaluation plan: after >= 20 pas drift entries, compare taken vs
+skipped entries' outcomes (oracle move after the gap, net P&L).
 
 ## E40. Live-dex readiness on pas; eligibility safeguard (Oct 16, infrastructure)
 **pas (announced Oct 16):** `check_dex.py pas`: 10 markets, collateral

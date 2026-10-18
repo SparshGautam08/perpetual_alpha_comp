@@ -246,6 +246,9 @@
   5. Stop the paper makers (par only): `pkill -f bot.maker`.
   Monday after 7 AM CT: `grep "trading started" ~/bot.log`, `tail -3
   ~/bot.log` -> HEARTBEAT equity ~100,000.
+- ML filter ON for the scored phase (DRIFT_ML_FILTER=yes in ~/run_bot.sh,
+  Oct 18; E39). Check its effect after >= 20 pas drift entries (bot.log
+  "ML pred" entries vs "ML filter: skip"); turn off if it hurts.
 - Drift: at most 4 positions at once (DRIFT_MAX_OPEN, default 4 = the
   backtest max; best edges first), so at most $100k gross even if many pas
   markets sit off the oracle together.
@@ -287,11 +290,11 @@
   watchdog; not on the recorder VM because its watchdog pattern
   "record_ws.py --out" would match it). Oct 16: pas books already quoted
   (9-15 bp spreads), EWY ~90 bp above its oracle.
-- Next: (1) ~Oct 18: second check of the E39 ML filter on live drift
-  entries since Oct 15 (bot.log "ML pred" + outcomes); turn on with
-  DRIFT_ML_FILTER=yes in ~/run_bot.sh only if it agrees; (2) switch to
-  pas before Mon Oct 19 12:00 UTC (see above); (3) move the main bot off bot1
-  before Nov 5 (bot2 is free: no live maker); (4) back up the recorded
+- Next: (1) evaluate the ML filter on pas after >= 20 drift entries; (2) watch the
+  first pas trades (Mon Oct 19 from 7 AM CT); (3) move the main bot to bot2
+  before bot1 expires Nov 5 01:55 UTC (= Wed Nov 4 7:55 PM CST), ideally by
+  Nov 1: copy ~/keys/api_wallet_bot2.key to the VM by hand, point
+  HL_API_KEY_FILE in ~/run_bot.sh at it, restart; (4) back up the recorded
   data (e.g. a Cloud Storage bucket) before Nov 6; (5) start the report
   (REPORT_NOTES.md has all experiments E1-E39).
 
