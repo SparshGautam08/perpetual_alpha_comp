@@ -239,6 +239,9 @@
   5. Stop the paper makers (par only): `pkill -f bot.maker`.
   Monday after 7 AM CT: `grep "trading started" ~/bot.log`, `tail -3
   ~/bot.log` -> HEARTBEAT equity ~100,000.
+- Drift: at most 4 positions at once (DRIFT_MAX_OPEN, default 4 = the
+  backtest max; best edges first), so at most $100k gross even if many pas
+  markets sit off the oracle together.
 - Drift trade size stays $25k on the $100k bankroll (E41: best score proxy
   because drift's daily return/std ratio is high; worst backtest trade
   -$611 = -0.6% of equity; 200 bp catastrophe stop and the 2% daily loss

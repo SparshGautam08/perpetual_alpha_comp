@@ -1046,6 +1046,13 @@ assumptions stay valid; going bigger would change them.
 **Caveats:** 6 days of drift history; pas's books may differ (E40); the
 score proxy's field ranges are guesses.
 **Decision:** keep $25k per drift trade on pas.
+**Added (Oct 18):** a cap of 4 simultaneous drift positions (DRIFT_MAX_OPEN;
+the backtest never held more than 4, so past results are unchanged; when
+more markets signal, the largest edges go first). Insurance against a new
+venue where many books sit off the oracle at once (pas EWY was ~90 bp off
+before trading, E40): without it drift could hold all 10 markets, $250k
+gross on $100k. Tests: 6 signals + 1 held -> the 3 best entered; 4 held ->
+no entries; under the cap unchanged; ML filter tests still pass.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp

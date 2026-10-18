@@ -73,6 +73,9 @@ class Drift:
     # ~-100 bp); insurance against rare crashes, not a performance lever.
     STOP_BP = 200.0
     NOTIONAL = 25_000.0
+    # At most this many drift positions at once (backtest max: 4). Guards a new
+    # venue where many markets could sit off the oracle at the same time.
+    MAX_OPEN = int(__import__("os").environ.get("DRIFT_MAX_OPEN", 4))
     MARKETS = ["BTC", "ETH", "HYPE", "SP500", "EWY", "EWJ", "BRENT", "GOLD",
                "USDEUR", "USDJPY"]
 
@@ -86,6 +89,7 @@ class Drift:
         # ML Model 1's predicted 15 s oracle move (E39), read from shadow mode.
         # Always logged with entries (for the live check); used only if ML_FILTER.
         preds = latest_predictions(now_s)
+        candidates = []          # (edge_bp, coin, order): entries, best first if capped
         for coin in self.MARKETS:
             q = quotes.get(coin)
             if q is None or not q.ok():
@@ -117,14 +121,21 @@ class Drift:
             ml = (f", ML pred {p:+.1f} bp" + (" (filter on)" if config.ML_FILTER else "")
                   if p is not None else ", ML pred n/a")
             if sell_edge - adj >= self.ENTRY_EDGE_BP:
-                orders[coin] = (-self.NOTIONAL, f"entry: sell ${self.NOTIONAL:,.0f} fills "
-                                f"{sell_edge:+.1f} bp vs oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")
+                candidates.append((sell_edge - adj, coin, (-self.NOTIONAL, f"entry: sell ${self.NOTIONAL:,.0f} fills "
+                                   f"{sell_edge:+.1f} bp vs oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")))
             elif buy_edge + adj >= self.ENTRY_EDGE_BP:
-                orders[coin] = (self.NOTIONAL, f"entry: buy ${self.NOTIONAL:,.0f} fills "
-                                f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")
+                candidates.append((buy_edge + adj, coin, (self.NOTIONAL, f"entry: buy ${self.NOTIONAL:,.0f} fills "
+                                   f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")))
             elif config.ML_FILTER and p is not None and max(sell_edge, buy_edge) >= self.ENTRY_EDGE_BP:
                 log.info(f"ML filter: skip {coin} entry (sell {sell_edge:+.1f} / buy {buy_edge:+.1f} bp, "
                          f"ML pred {p:+.1f} bp)")
+        slots = max(0, self.MAX_OPEN - sum(1 for u in positions.values() if u))
+        candidates.sort(reverse=True)
+        for _, coin, order in candidates[:slots]:
+            orders[coin] = order
+        if len(candidates) > slots:
+            log.info(f"Drift cap ({self.MAX_OPEN} open): skipped entries "
+                     + ", ".join(f"{c} {e:+.1f} bp" for e, c, _ in candidates[slots:]))
         return orders
 
     def record(self, coin: str, now_s: float, opened: bool, oracle: float | None = None):
