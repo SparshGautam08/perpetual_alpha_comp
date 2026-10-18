@@ -91,6 +91,8 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
                   f"({(equity / prev - 1) * 100:+.2f}%), positions {broker.positions()}",
                   priority="low", key="summary")
         state.set(day=today, day_start_equity=equity)
+    if not state.get("day_start_equity") and equity > 0:    # funded later in the day
+        state.set(day_start_equity=equity)
 
     # Kill switch: flatten and exit.
     if config.STOP_FILE.exists():
@@ -100,6 +102,17 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
         alert("STOPPED", f"STOP file found. Flattened {len(fills)} orders. "
               f"Positions now {broker.positions()}", priority="urgent")
         return False
+
+    # Start gate: switched to the live dex early; wait for the start and the funds.
+    start = config.TRADE_FROM and datetime.fromisoformat(config.TRADE_FROM.replace("Z", "+00:00"))
+    if (start and now < start) or equity <= 0:
+        log.info(f"WAITING: no trading before {config.TRADE_FROM or '-'} / while equity is 0 "
+                 f"(now {now:%H:%M:%S} UTC, equity {equity:,.2f} on {config.DEX})")
+        state.set(gate_open=False)
+        return True
+    if not state.get("gate_open"):
+        state.set(gate_open=True)
+        alert("trading started", f"Gate open on {config.DEX}: equity {equity:,.2f}", priority="high")
 
     # Daily loss stop.
     start_eq = state.get("day_start_equity")

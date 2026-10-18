@@ -123,7 +123,8 @@ class LiveBroker:
         """Unified account: the collateral total already includes uPnL at mark
         (REPORT_NOTES E10), so swap mark uPnL for oracle uPnL."""
         spot = post(config.BASE_URL, {"type": "spotClearinghouseState", "user": config.TEAM})
-        total = float(next(b["total"] for b in spot["balances"] if b["coin"] == config.COLLATERAL))
+        # No entry at all before the dex funds us: count it as 0 (the start gate waits).
+        total = float(next((b["total"] for b in spot["balances"] if b["coin"] == config.COLLATERAL), 0.0))
         adj = 0.0
         for p in self._state().get("assetPositions", []):
             pos = p["position"]

@@ -225,18 +225,20 @@
 - Only ONE live bot per account: don't run it on a laptop at the same time.
 
 ## Current status (Oct 18) and next steps
-- MONDAY OCT 19 SWITCH (official start 12:00 UTC = 7:00 AM CT; USDP
-  $100,000 arrives then). From ~7:02 AM CT:
-  1. `~/venv/bin/python ~/perpetual_alpha_comp/check_dex.py pas` -> USDP
-     balance 100,000.
-  2. `cd ~/perpetual_alpha_comp && git pull`.
-  3. Add to ~/run_bot.sh: `export HL_DEX=pas`, `export HL_COLLATERAL=USDP`,
-     `export ELIG_TRADE_BY=2026-10-20T20:00:00Z`; then
-     `pkill -f "bot.main --mode live"` (watchdog restarts within 5 min).
-  4. Shadow: add HL_DEX=pas to its start command in ~/shadow_watchdog.sh,
-     then `pkill -f bot.shadow` (needed for "ML pred" logging on pas).
+- SWITCH TO PAS THE NIGHT BEFORE (Sun Oct 18; nobody awake at 7 AM CT).
+  The start gate (TRADE_FROM; also no orders while equity is 0) keeps the
+  bot idle on pas until Mon Oct 19 12:00 UTC and the $100k USDP arrive,
+  then it alerts "trading started" via ntfy. Steps on the bot VM:
+  1. `cd ~/perpetual_alpha_comp && git pull`.
+  2. Add after `export LEVERAGE=0` in ~/run_bot.sh: HL_DEX=pas,
+     HL_COLLATERAL=USDP, TRADE_FROM=2026-10-19T12:00:00Z,
+     ELIG_TRADE_BY=2026-10-20T20:00:00Z; `pkill -f "bot.main --mode live"`.
+  3. `tail -3 ~/bot.log` -> "WAITING ... equity 0.00 on pas".
+  4. Shadow: add HL_DEX=pas to its command in ~/shadow_watchdog.sh, then
+     `pkill -f bot.shadow`.
   5. Stop the paper makers (par only): `pkill -f bot.maker`.
-  6. Check: `tail -3 ~/bot.log` -> HEARTBEAT equity ~100,000, positions {}.
+  Monday after 7 AM CT: `grep "trading started" ~/bot.log`, `tail -3
+  ~/bot.log` -> HEARTBEAT equity ~100,000.
 - Drift trade size stays $25k on the $100k bankroll (E41: best score proxy
   because drift's daily return/std ratio is high; worst backtest trade
   -$611 = -0.6% of equity; 200 bp catastrophe stop and the 2% daily loss

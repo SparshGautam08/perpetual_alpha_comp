@@ -40,6 +40,11 @@ MAX_WEIGHT = _env("MAX_WEIGHT", 0.30, float)       # per-market |weight| cap
 DAILY_LOSS_STOP = _env("DAILY_LOSS_STOP", 0.02, float)  # flatten at -2% on the day
 MAX_SPREAD_BP = _env("MAX_SPREAD_BP", 100, float)  # skip a market if book looks broken
 
+# --- Start gate ---
+# No orders before TRADE_FROM (ISO UTC; empty = no gate) or while equity is 0
+# (dex not funded yet), so the bot can be switched to the live dex early.
+TRADE_FROM = _env("TRADE_FROM", "")
+
 # --- Eligibility safeguard (bot/eligibility.py) ---
 # >= 1 fill in the scored phase is needed to be ranked. If ELIG_TRADE_BY
 # (ISO UTC, e.g. 2026-10-20T20:00:00Z) has passed and the account has no
