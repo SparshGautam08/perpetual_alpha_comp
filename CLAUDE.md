@@ -225,6 +225,13 @@
 - Only ONE live bot per account: don't run it on a laptop at the same time.
 
 ## Current status (Oct 18) and next steps
+- DONE Sun Oct 18 ~14:15 UTC: live bot on pas (log "WAITING ... equity
+  0.00 on pas"; par left flat, 0 orders), shadow on pas (HL_DEX=pas added
+  as line 2 of ~/shadow_watchdog.sh, backup .bak; NOTE shadow_2026-10-18.csv
+  holds par rows before ~14:16 UTC and pas rows after), paper makers
+  stopped. ~/run_bot.sh backups: .bak (pre-LEVERAGE=0), .bak2 (pre-pas).
+  Tip: `bash ~/bot_watchdog.sh` / `bash ~/shadow_watchdog.sh` restart at
+  once instead of waiting for cron.
 - SWITCH TO PAS THE NIGHT BEFORE (Sun Oct 18; nobody awake at 7 AM CT).
   The start gate (TRADE_FROM; also no orders while equity is 0) keeps the
   bot idle on pas until Mon Oct 19 12:00 UTC and the $100k USDP arrive,
