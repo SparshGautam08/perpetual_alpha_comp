@@ -1063,6 +1063,64 @@ before trading, E40): without it drift could hold all 10 markets, $250k
 gross on $100k. Tests: 6 signals + 1 held -> the 3 best entered; 4 held ->
 no entries; under the cap unchanged; ML filter tests still pass.
 
+## E42. PRE-REGISTRATION of the live-phase evaluation (Oct 18, before any pas trade)
+Written and committed before the scored phase starts (Mon Oct 19 12:00
+UTC); the commit time is the proof. No live pas trade exists yet.
+
+**System under test (as deployed Oct 18, bot VM):** combined bot with risk
+parity OFF (LEVERAGE=0, E38) = drift v2b only: entry when a $25k fill is
+>= 30 bp better than the oracle, exit when closing costs <= 10 bp or
+after 12 h, 200 bp catastrophe stop, at most 4 open positions, checks
+every 15 s; ML filter ON (E39: entry edge adjusted by ML Model 1's 15 s
+oracle forecast from shadow mode); 2% daily loss stop; eligibility
+safeguard (one ~$15 round trip if no fill by Oct 20 20:00 UTC).
+Window: Oct 19 12:00 -> Nov 6 12:00 UTC on pas, $100,000 USDP.
+
+**Data:** the team's fills (userFillsByTime) and funding (userFunding);
+equity history (portfolio); bot.log (entries with "ML pred", "ML filter:
+skip" lines, exits, HEARTBEATs); shadow logs (predictions per second);
+the pas recorder (~/data_pas: oracle, books, trades).
+
+**Questions and criteria (decided now, not after seeing results):**
+- **H1 Drift's edge survives on pas.** Unit: completed drift round trip,
+  net of fees and funding, from fills. Primary: mean net P&L per round
+  trip > 0. Report a 95% bootstrap CI (resampling trades). Secondary:
+  net excluding oracle moves > 0 (as E16/E27). The eligibility round trip
+  is excluded.
+- **H2 Backtest calibration.** Re-run the same rule (drift_strategy
+  simulate_v2, 15 s checks) on the pas recorder data over the same window;
+  report live / backtest P&L and trade counts, matched trades (E30 method).
+  Descriptive, no pass/fail; E30 led us to expect live < backtest.
+- **H3 Steadiness and risk (the 30% score).** Daily returns from equity at
+  the 12:00 UTC snapshots (oracle-marked, as scored). Expectation from E41:
+  daily std ~0.47% at full backtest P&L (0.24% at half). Criterion: daily
+  std <= 0.5%; max drawdown <= 3%. Also reported: number of daily-loss-stop
+  triggers and catastrophe stops.
+- **H4 ML filter adds value.** (a) Model accuracy live on pas: shadow-log
+  R2 of the GBM vs the baseline over the window; criterion GBM > baseline
+  (as E27/E35). (b) Trading effect: for every gap where plain drift would
+  have entered, compare entries the filter took with entries it skipped
+  or delayed; the skipped ones are valued counterfactually with the plain
+  rule on the recorder data (same simulator as H2). Criterion: mean net
+  P&L of taken entries >= that of skipped counterfactuals, and the
+  oracle-move component of taken > skipped. Report n and a bootstrap CI.
+- **H5 Operations.** Share of minutes with a HEARTBEAT (target >= 99%);
+  every incident (crash, restart, manual action) logged with time and
+  cause.
+
+**Decision rules during the phase (fixed now):**
+- ML filter: evaluate H4(b) once >= 20 entries (taken + skipped) exist.
+  If taken entries' mean net < the skipped counterfactuals' mean, switch
+  the filter OFF and log it; otherwise keep it on. Re-check weekly.
+- Size: drop drift to $10k per trade if the daily loss stop triggers twice,
+  or the drawdown from peak exceeds 3%.
+- Any parameter change: logged here (time, reason) BEFORE deploying;
+  results are reported per segment (before/after). A setting chosen by
+  looking at live data is not validated by that same data.
+
+**Analysis code:** backtest/eval_live.py (to be written to this spec; any
+deviation from the spec is reported as such).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
