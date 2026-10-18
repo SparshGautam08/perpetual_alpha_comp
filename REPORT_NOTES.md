@@ -1022,6 +1022,31 @@ nothing; deadline passed, no fills -> BTC round trip 0.00018 BTC, position
 back to 0, cost $0.04, alert; second run -> nothing; account with fills
 (par, 57 since Oct 15) -> "nothing to do".
 
+## E41. Drift trade size on the $100,000 scored bankroll (Oct 18)
+**Why:** the official announcement (Oct 18) sets the scored bankroll to
+$100,000 USDP, not the 1,000,000 of practice. Drift trades a fixed $25k,
+so per-trade risk is 10x larger relative to equity than in practice.
+**Method:** `python -m backtest.drift_size`: drift's daily P&L at $25k
+(E38: v2b, 15 s checks, 69 trades, $572/day mean, $517 std, worst day
+-$292, worst trade -$611) rescaled to $2.5k-$25k and to half its P&L,
+18-day competitions resampled, score proxy as E5/E38.
+**Results (full P&L / half P&L):**
+
+| size | median return | p10 | daily std | worst trade | score narrow | score wide |
+|---|---|---|---|---|---|---|
+| $2.5k | +1.0% / +0.5% | +0.8% / +0.4% | 0.05% / 0.02% | -0.06% | 45.4 / 44.4 | 43.9 / 43.6 |
+| $10k | +4.2% / +2.1% | +3.1% / +1.5% | 0.19% / 0.09% | -0.24% | 51.7 / 47.4 | 45.7 / 44.5 |
+| $25k | +10.8% / +5.3% | +7.9% / +3.9% | 0.47% / 0.24% | -0.61% | **61.5 / 53.8** | **49.4 / 46.2** |
+
+**Learned:** unlike risk parity (E5, E38), drift's return grows much faster
+than its daily std (19-day return ~20x the daily std), so under both field
+guesses bigger is better up to the tested $25k. $25k is also the size the
+entry edge was measured at (book depth), so the backtest's fill
+assumptions stay valid; going bigger would change them.
+**Caveats:** 6 days of drift history; pas's books may differ (E40); the
+score proxy's field ranges are guesses.
+**Decision:** keep $25k per drift trade on pas.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

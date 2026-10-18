@@ -23,9 +23,15 @@
   pre-competition test trades don't affect the scored bankroll.
 - Official site: https://perpetual-alpha26.github.io (docs, FAQ, schedule).
   Contact: perpetual-alpha@googlegroups.com. Part of ICAIF 2026.
-- Dates: practice from Oct 5 (non-scored); SCORED PHASE starts Mon Oct 19
-  12:00 UTC (7:00 AM CT) on `pas`, ends Nov 6 (exact time not announced);
-  >= 1 trade needed to be ranked; report + code due Nov 6;
+- OFFICIAL ANNOUNCEMENT (Oct 18): scored phase Mon Oct 19 12:00 UTC (7:00
+  AM CDT) -> Fri Nov 6 12:00 UTC (6:00 AM CST; US clocks change Nov 1), on
+  `pas` only, quote asset USDP. Starting balance $100,000 USDP per team
+  (NOT 1M), paid at Oct 19 12:00 UTC to every wallet that traded on par in
+  practice (we did). OI cap $10M per market, $50M for the whole dex.
+  Scores use a DAILY SNAPSHOT AT 12:00 UTC. Rankings on
+  https://perpetual-alpha26.github.io/leaderboard. Paper due Nov 6.
+- Dates: practice from Oct 5 (non-scored); >= 1 trade (fill) in the
+  scored phase needed to be ranked; report + code due Nov 6;
   winners present at ICAIF Milan, Nov 14-17.
 - Fees (official docs): taker 9 bp (matches our Oct 7 test trade),
   maker 3 bp, charged in USDPR per fill.
@@ -88,9 +94,9 @@
     trading is not allowed: entries must be algorithmic". So: safety
     stops/closes via the bot's kill switch are the safe route; never
     place entries by hand.
-- Still unanswered: time and valuation (mark vs oracle) of the daily
-  equity snapshot; exact end time on Nov 6; whether inactive/liquidated
-  teams count in the normalization; manual intervention.
+- Still unanswered: valuation (mark vs oracle) in the daily snapshot;
+  whether inactive/liquidated teams count in the normalization; manual
+  intervention.
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
@@ -218,9 +224,23 @@
   within 5 min with the new code).
 - Only ONE live bot per account: don't run it on a laptop at the same time.
 
-## Current status (Oct 16) and next steps
-- Scored phase starts Oct 19 (new DEX, name not announced). Practice money
-  resets then. Equity at oracle ~992,900 on Oct 14 (practice).
+## Current status (Oct 18) and next steps
+- MONDAY OCT 19 SWITCH (official start 12:00 UTC = 7:00 AM CT; USDP
+  $100,000 arrives then). From ~7:02 AM CT:
+  1. `~/venv/bin/python ~/perpetual_alpha_comp/check_dex.py pas` -> USDP
+     balance 100,000.
+  2. `cd ~/perpetual_alpha_comp && git pull`.
+  3. Add to ~/run_bot.sh: `export HL_DEX=pas`, `export HL_COLLATERAL=USDP`,
+     `export ELIG_TRADE_BY=2026-10-20T20:00:00Z`; then
+     `pkill -f "bot.main --mode live"` (watchdog restarts within 5 min).
+  4. Shadow: add HL_DEX=pas to its start command in ~/shadow_watchdog.sh,
+     then `pkill -f bot.shadow` (needed for "ML pred" logging on pas).
+  5. Stop the paper makers (par only): `pkill -f bot.maker`.
+  6. Check: `tail -3 ~/bot.log` -> HEARTBEAT equity ~100,000, positions {}.
+- Drift trade size stays $25k on the $100k bankroll (E41: best score proxy
+  because drift's daily return/std ratio is high; worst backtest trade
+  -$611 = -0.6% of equity; 200 bp catastrophe stop and the 2% daily loss
+  stop still apply).
 - Running on the bot VM: live bot, drift 30 bp only (+ 200 bp catastrophe
   stop; risk parity OFF since Oct 15 20:55 UTC, LEVERAGE=0 in
   ~/run_bot.sh, backup ~/run_bot.sh.bak), shadow mode (ML predictions logged to
