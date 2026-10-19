@@ -1121,6 +1121,34 @@ the pas recorder (~/data_pas: oracle, books, trades).
 **Analysis code:** backtest/eval_live.py (to be written to this spec; any
 deviation from the spec is reported as such).
 
+## E43. The official scoring formula; drift size re-checked with it (Oct 19)
+**Found:** the leaderboard page (Oct 19) defines the score: Score = 0.8 Q +
+0.2 J, Q = (max(R,0) + 0.005) / (|R| + 1.5 sigma + 0.05), with R the
+time-weighted return between daily samples at 12:00 UTC, equity = account
+value with positions at MARK, sigma = daily-return std x sqrt(n). Each
+team is scored on its own numbers (not min-max across teams as assumed
+in E5/E38/E41). R = 0 gives Q = 0.1; any loss gives Q < 0.1.
+**Re-check of E41 with the real Q** (same resampled drift days, 18 days):
+
+| size | P&L vs backtest | median R | median sigma | Q mean | Q p10 |
+|---|---|---|---|---|---|
+| $10k | 100% / 50% / 25% | 4.2% / 2.1% / 1.0% | 0.8% / 0.4% / 0.2% | 0.45 / 0.34 / 0.24 | 0.38 / 0.29 / 0.21 |
+| $25k | 100% / 50% / 25% | 10.9% / 5.3% / 2.6% | 2.0% / 1.0% / 0.5% | 0.60 / 0.49 / 0.37 | 0.52 / 0.42 / 0.31 |
+| $50k | 100% / 50% / 25% | 22.6% / 10.8% / 5.3% | 4.0% / 2.0% / 1.0% | 0.68 / 0.60 / 0.49 | 0.61 / 0.52 / 0.42 |
+
+**Learned:** E41's conclusion holds under the real formula: Q rises with
+drift's size, with diminishing gains (it tends to R/(R + 1.5 sigma) ~0.78
+for drift). The formula punishes any net loss (Q < 0.1), so avoiding a
+losing competition matters more than squeezing extra return. Keep $25k;
+$50k is untested (fill depth twice the size the edge was measured at) and
+would only be considered after live pas evidence (logged here first, E42
+rule). Also: equity at MARK means a position held over 12:00 UTC is
+valued at the book-based mark, which stale top-of-book orders can distort
+(pas EWY, E40).
+**Reproduce:** `python -m backtest.drift_size` (Q_mean / Q_p10 columns).
+**Day 1 note:** USDP 100,000 arrived; at 14:55 UTC no pas trade yet (largest
+$25k edge: SP500 buy +18 bp; threshold 30).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

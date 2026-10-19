@@ -43,7 +43,7 @@ if positions:
               f"{float(p['unrealizedPnl']):>12,.2f}{u_o:>13,.2f}"
               f"{-float(p['cumFunding']['sinceOpen']):>10,.4f}")
 else:
-    print("No open positions on par.")
+    print(f"No open positions on {DEX}.")
 
 # Unified account: the USDPR total already includes unrealized P&L at mark
 # (checked Oct 7: 1,000,000 - 0.90 fee - 0.64 uPnL = 999,998.46).

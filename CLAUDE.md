@@ -7,12 +7,19 @@
   USDP (token 3307), same 10 markets (organizers, Oct 16).
 - 10 markets: par:BTC, par:ETH, par:HYPE, par:SP500, par:EWY, par:EWJ,
   par:BRENT, par:GOLD, par:USDEUR, par:USDJPY.
-- Scoring (each min-max normalized across teams):
-  1. Total net return, marked to oracle at end of live phase.
-  2. Low std dev of daily equity returns (steadier = better).
-  3. Jury score on a 2-4 page technical report (AI/ML depth, originality,
-     rigor/reproducibility, clarity).
-- Score weights: profit 40%, low daily-return std dev 30%, report 30%.
+- OFFICIAL SCORING (leaderboard page, read Oct 19; replaces the earlier
+  min-max 40/30/30 description):
+  - Score = 0.8 x Q + 0.2 x J (J = jury score 0-1 on the report).
+  - Q = (max(R,0) + 0.005) / (|R| + 1.5 x sigma + 0.05), per team, NOT
+    relative to other teams. R = time-weighted return between DAILY
+    SAMPLES at 12:00 UTC; equity = Hyperliquid ACCOUNT VALUE, positions at
+    the MARK price (not oracle). sigma = sample std of daily returns x
+    sqrt(n days). R = 0 -> Q = 0.1; any loss -> Q < 0.1.
+  - Ranked only with >= 1 trading day, a start sample and >= 2 daily
+    returns (no ranks in the first two days).
+  - Implication (E43): losses are punished hard; with drift's high
+    return/vol ratio, Q rises with size ($10k 0.45, $25k 0.60, $50k 0.68
+    at full backtest P&L).
 - Rules: entries must be algorithmic; >= 1 trade to be ranked (the earlier
   10-day / minimum-volume rules were dropped, Oct 9). No wash trading, self-crossing, collusion,
   or attacks on exchange/oracle. Organizer market-making bots quote in all
@@ -94,9 +101,8 @@
     trading is not allowed: entries must be algorithmic". So: safety
     stops/closes via the bot's kill switch are the safe route; never
     place entries by hand.
-- Still unanswered: valuation (mark vs oracle) in the daily snapshot;
-  whether inactive/liquidated teams count in the normalization; manual
-  intervention.
+- Still unanswered: manual intervention. (Snapshot valuation: MARK, see
+  OFFICIAL SCORING.)
 
 ## Account (all set up)
 - Endpoint: https://api.hyperliquid-testnet.xyz
