@@ -1015,6 +1015,12 @@ its prediction and every filtered entry logs "ML filter: skip", so its
 live effect can be measured on pas and the filter switched off if it
 hurts. Evaluation plan: after >= 20 pas drift entries, compare taken vs
 skipped entries' outcomes (oracle move after the gap, net P&L).
+**Anecdote (par, Oct 17, filter OFF, predictions only logged; outside the
+E42 test, n = 2):** EWJ short at +41.0 bp with ML pred +17.1 bp (adjusted
+23.9 < 30: the filter would have skipped) lost -$92.12 net; ETH long at
++38.3 bp with ML pred -12.4 bp (adjusted 25.9: skip) lost -$70.49 net
+(fills from userFillsByTime). In both, the oracle moved toward par's price,
+the failure the filter targets. Illustration only, not evidence.
 
 ## E40. Live-dex readiness on pas; eligibility safeguard (Oct 16, infrastructure)
 **pas (announced Oct 16):** `check_dex.py pas`: 10 markets, collateral
