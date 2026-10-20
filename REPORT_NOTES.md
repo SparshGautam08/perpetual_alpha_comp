@@ -1287,6 +1287,10 @@ pass (paper: 5.07 of 6.47 SP500 left), the bot exited with a position
 open. Now `flatten_all` repeats until flat (up to 20 passes, 3 s apart)
 and alerts "FLATTEN INCOMPLETE" otherwise. Paper: STOP with the $50k
 position -> 5 orders, flat.
+**DEPLOYMENT LOG (E42 rule, written before the switch):** team decision
+Oct 20 ~23:40 UTC (6:40 PM CT) to run carry live at CARRY_USD=50000 with
+the locked thresholds; live from the bot restart that follows. Results
+are reported separately before / after this point.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
