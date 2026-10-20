@@ -1155,6 +1155,41 @@ valued at the book-based mark, which stale top-of-book orders can distort
 **Day 1 note:** USDP 100,000 arrived; at 14:55 UTC no pas trade yet (largest
 $25k edge: SP500 buy +18 bp; threshold 30).
 
+## E44. First pas drift trade: the book led the oracle (Oct 20)
+**Trade:** 15:12:27 UTC drift saw a $25k sell fill +53.6 bp above BRENT's
+oracle; ML pred +15.3 bp (filter on: adjusted 38.3 >= 30, entered). Sell
+order 239.85 BRENT, only 35.99 filled @ 104.19 (+58.9 bp vs oracle
+103.58). The oracle then rose to 104.28 (15:12:30) and 104.45 (15:13:28);
+drift exited at 15:13:28 (cheap exit) @ ~104.54. Net -$19.33 (price -$12.57,
+fees -$6.76). Reproduce: bot.log lines of 2026-10-20 15:12-15:13; fills via
+userFillsByTime; book: `python -m backtest.book_at ~/data_pas pas:BRENT
+"2026-10-20 15:12:27" --before 15 --after 5` (bot VM).
+**What the recorded book shows:** at 15:12:14-19 the book sat on the oracle
+(mid -2 to -9 bp). 15:12:20-23.7: ONE account (0x7a87cd44, another team)
+bought ~580 BRENT (~$60k) in 14 fills, sweeping the asks from 103.62 to
+104.44; almost all from the main liquidity provider (0x7a25cf57, likely
+the organizers' market maker). At 15:12:24.7 the mid was +65 bp above the
+still-unchanged oracle (103.59); the only bid >= 30 bp above the oracle
+was 9.6 @ 104.09. Our sell (15:12:29) hit 0x7a25cf57's bid of 35.99 @
+104.19; within 1-6 s the oracle followed the book up (+66 to +84 bp).
+**Diagnosis:** not an execution bug and not other teams taking "our" bids.
+The gap was PRICE DISCOVERY: an informed buyer moved pas's book ~7 s
+before the oracle caught up (BRENT rallied), so the gap closed from the
+oracle's side, exactly drift's failure mode (E19, E39). The mid-based
+price limit (15 bp from mid) stopped the order chasing the thin, moving
+book; an oracle-based limit (>= +30 bp vs the stale oracle) would have sold
+into 104.09/104.02, below where the oracle went, i.e. a larger loss (a full
+$25k at the realized prices: about -$130). **Decision:** keep the
+execution limit as is.
+**Learned:** (1) on pas, other teams react to real price moves faster than
+the oracle updates; a gap created by an aggressive sweep is informed, not a
+mispricing. (2) The ML model saw it coming (+15.3 bp) but underestimated
+the move (+84 bp); third live example of the pattern (E39 anecdotes). (3)
+Candidate improvement, NOT deployed (n = 1, E42 rule): skip drift entries
+right after a sweep (e.g. a large aggressive volume or mid jump in the last
+~10 s), since such gaps are likely informed. To test on the pas recorder
+data once there are more entries.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
