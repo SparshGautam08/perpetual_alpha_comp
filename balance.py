@@ -47,5 +47,5 @@ else:
 
 # Unified account: the USDPR total already includes unrealized P&L at mark
 # (checked Oct 7: 1,000,000 - 0.90 fee - 0.64 uPnL = 999,998.46).
-print(f"\nEquity at mark:   {cash:,.2f}")
-print(f"Equity at oracle: {cash - upnl_mark + upnl_oracle:,.2f}   (what we're scored on)")
+print(f"\nEquity at mark:   {cash:,.2f}   (what the daily score samples use, E43)")
+print(f"Equity at oracle: {cash - upnl_mark + upnl_oracle:,.2f}")
