@@ -1270,6 +1270,23 @@ on, logged here first per E42):**
 - Evaluation (adds to E42): carry P&L split into funding received vs price
   move; criterion funding received > price + costs at the end, reported
   with the funding regime's duration.
+**Built (Oct 21):** `bot/strategy.py: Carry` + `bot/portfolio.py` (the
+carry target uses the non-drift slot; risk parity is off). Settings
+CARRY_USD (0 = off, default), CARRY_COIN, CARRY_ENTER_PCT, CARRY_EXIT_PCT,
+CARRY_LOOKBACK_H. Checked once an hour; the target is held every loop, so
+a partial fill is completed on later loops; alert on every change.
+**Tests:** decide(): 14 cases (entry at -30, hold to -15, mirror for
+shorts, needs >= 12 settled hours). Live pas signal Oct 20 23:30 UTC:
+-103.5 %/yr over 24 h -> long. Paper runs on the real pas book: entry
+6.468 SP500 (~$50k) at -14 bp vs the oracle; same hour again: no orders;
+forced exit: completed over 4 loops (price limit), round trip -$166 on
+$50k (0.33%, study assumed 0.30%); carry off: unchanged behaviour.
+**Bug found and fixed:** the kill switch and the daily loss stop closed
+positions in ONE pass and then stopped; when the price limit halted the
+pass (paper: 5.07 of 6.47 SP500 left), the bot exited with a position
+open. Now `flatten_all` repeats until flat (up to 20 passes, 3 s apart)
+and alerts "FLATTEN INCOMPLETE" otherwise. Paper: STOP with the $50k
+position -> 5 orders, flat.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp

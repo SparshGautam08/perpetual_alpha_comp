@@ -16,9 +16,10 @@ import time
 import numpy as np
 
 from . import config
+from .alerts import alert
 from .execution import close, _trade
 from .market import snapshot
-from .strategy import Drift, RiskParity
+from .strategy import Carry, Drift, RiskParity
 
 log = logging.getLogger("bot")
 
@@ -30,11 +31,13 @@ class Combined:
         self.state = state
         self.rp = RiskParity()
         self.drift = Drift(state)
+        self.carry = Carry(state)
         self.markets = sorted(set(config.MARKETS) | set(Drift.MARKETS))
 
     def reset(self):
         """After a flatten (kill switch / loss stop): no targets, no shares."""
-        self.state.set(rp_target_units={}, drift_units={}, drift_entries={})
+        self.state.set(rp_target_units={}, drift_units={}, drift_entries={},
+                       carry_target_units={}, carry_side=0)
 
     def step(self, broker, quotes, equity, rebalance_due: bool) -> dict:
         rp_t = dict(self.state.get("rp_target_units", {}))
@@ -45,6 +48,13 @@ class Combined:
             log.info("RP targets ($): " + ", ".join(f"{c} {u * quotes[c].oracle:,.0f}"
                                                    for c, u in sorted(rp_t.items())))
             self.state.set(rp_target_units=rp_t)
+        # Funding carry (E46) shares the non-drift slot with risk parity (off):
+        # its target is held every loop, so a partial fill is completed later.
+        carry_t, carry_changed = self.carry.update(quotes, time.time())
+        if carry_changed:
+            alert("carry", f"Carry target now {carry_t or 'flat'} (side {self.state.get('carry_side')})",
+                  priority="high")
+        base_t = {c: rp_t.get(c, 0.0) + carry_t.get(c, 0.0) for c in set(rp_t) | set(carry_t)}
 
         # Dust: a drift share too small to trade (< exchange minimum) is just
         # forgotten (it becomes part of risk parity's share), otherwise the
@@ -72,17 +82,18 @@ class Combined:
         for c, u in maker.items():
             actual[c] = actual.get(c, 0.0) - u
         fills_all = []
-        for c in sorted(set(rp_t) | set(drift_t) | set(actual)):
+        for c in sorted(set(base_t) | set(drift_t) | set(actual)):
             q = quotes.get(c)
             if q is None or not q.ok():
                 continue
             cur = float(actual.get(c, 0.0))
-            desired = float(rp_t.get(c, 0.0) + drift_t.get(c, 0.0))
+            desired = float(base_t.get(c, 0.0) + drift_t.get(c, 0.0))
             delta = desired - cur
             d = float(drift_t.get(c, 0.0) - drift_now.get(c, 0.0))  # drift's wanted change
             r = delta - d                                             # the rest is risk parity's
             drift_trades = c in orders
-            rp_trades = rebalance_due and abs(r) * q.oracle >= config.BAND * equity
+            held_target = rebalance_due or (config.CARRY_USD > 0 and c == config.CARRY_COIN)
+            rp_trades = held_target and abs(r) * q.oracle >= config.BAND * equity
             if not (drift_trades or rp_trades):
                 continue
             if not rp_trades:          # drift-only loop: don't drag RP's small drift along

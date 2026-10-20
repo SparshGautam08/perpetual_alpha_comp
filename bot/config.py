@@ -40,6 +40,16 @@ MAX_WEIGHT = _env("MAX_WEIGHT", 0.30, float)       # per-market |weight| cap
 DAILY_LOSS_STOP = _env("DAILY_LOSS_STOP", 0.02, float)  # flatten at -2% on the day
 MAX_SPREAD_BP = _env("MAX_SPREAD_BP", 100, float)  # skip a market if book looks broken
 
+# --- Funding carry (REPORT_NOTES E46, locked rule) ---
+# Hold CARRY_COIN on the side that RECEIVES funding: enter when the average of
+# the last CARRY_LOOKBACK_H settled hourly rates pays that side >= ENTER %/yr,
+# exit when it falls below EXIT %/yr. CARRY_USD = 0 turns it off (default).
+CARRY_USD = _env("CARRY_USD", 0.0, float)
+CARRY_COIN = _env("CARRY_COIN", "SP500")
+CARRY_ENTER_PCT = _env("CARRY_ENTER_PCT", 30.0, float)
+CARRY_EXIT_PCT = _env("CARRY_EXIT_PCT", 15.0, float)
+CARRY_LOOKBACK_H = _env("CARRY_LOOKBACK_H", 24, int)
+
 # --- Start gate ---
 # No orders before TRADE_FROM (ISO UTC; empty = no gate) or while equity is 0
 # (dex not funded yet), so the bot can be switched to the live dex early.

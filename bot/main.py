@@ -75,6 +75,24 @@ def drift_step(broker, strategy, quotes, state) -> None:
                   key=f"drift-{coin}", every_s=60)
 
 
+def flatten_all(broker, tries: int = 20, pause_s: float = 3.0) -> list[dict]:
+    """Close every position, retrying until flat: one pass can stop part-way
+    when the book within the price limit runs out (found Oct 21 testing the
+    $50k carry position: one pass left 5.07 of 6.47 SP500 open)."""
+    fills = []
+    for i in range(tries):
+        pos = broker.positions()
+        if not pos:
+            break
+        fills += flatten(broker, snapshot(list(pos)))
+        if broker.positions():
+            time.sleep(pause_s)
+    left = broker.positions()
+    if left:
+        alert("FLATTEN INCOMPLETE", f"Still open after {tries} passes: {left}", priority="urgent")
+    return fills
+
+
 def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
     """One loop iteration. Returns False when the bot should exit."""
     now = datetime.now(timezone.utc)
@@ -96,7 +114,7 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
 
     # Kill switch: flatten and exit.
     if config.STOP_FILE.exists():
-        fills = flatten(broker, quotes)
+        fills = flatten_all(broker)
         if isinstance(strategy, Combined):
             strategy.reset()
         alert("STOPPED", f"STOP file found. Flattened {len(fills)} orders. "
@@ -119,7 +137,7 @@ def step(broker, strategy, state: State, force_rebalance: bool) -> bool:
     if state.get("halted_day") == today:
         return True
     if start_eq and equity < start_eq * (1 - config.DAILY_LOSS_STOP):
-        fills = flatten(broker, quotes)
+        fills = flatten_all(broker)
         if isinstance(strategy, Combined):
             strategy.reset()
         state.set(halted_day=today)

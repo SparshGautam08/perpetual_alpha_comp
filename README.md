@@ -28,6 +28,12 @@ shadow mode, better in all 10 markets (E35). In the live bot it filters
 drift's entries: a gap the oracle is predicted to close by itself is
 skipped (E39).
 
+**Funding carry (from Oct 21).** On `pas`, funding has been one-sided
+for days (longs paid ~100%/yr on SP500). The bot holds $50k of SP500 on
+the side that receives funding while the last 24 h of funding pays at
+least 30%/yr, and exits below 15%/yr (E46; price risk studied on real
+history with the price drift removed).
+
 **Risk controls.** 200 bp catastrophe stop per trade, 2% daily loss stop,
 at most 4 open drift positions, a kill switch, and a start gate that keeps
 the bot idle until the scored phase starts and the account is funded.
@@ -75,7 +81,7 @@ settings used in the scored phase:
 
 ```bash
 export HL_DEX=pas HL_COLLATERAL=USDP LEVERAGE=0 DRIFT_ENTRY_BP=30 LOOP_SECONDS=15
-export DRIFT_ML_FILTER=yes TRADE_FROM=2026-10-19T12:00:00Z ELIG_TRADE_BY=2026-10-20T20:00:00Z
+export DRIFT_ML_FILTER=yes TRADE_FROM=2026-10-19T12:00:00Z ELIG_TRADE_BY=2026-10-20T20:00:00Z CARRY_USD=50000
 BOT_LIVE=yes HL_API_KEY_FILE=~/keys/<api wallet>.key .venv/bin/python -m bot.main --mode live --strategy combined
 ```
 
@@ -116,7 +122,9 @@ Each experiment in REPORT_NOTES.md lists its command. The main ones:
 | Maker A/B (E36) | `python -m backtest.eval_maker <folder>` |
 | Risk parity's role (E38) | `python -m backtest.rp_role` |
 | ML filter for drift, locked test (E39) | `python -m backtest.ml_drift_filter` |
-| Drift size on $100k (E41) | `python -m backtest.drift_size` |
+| Drift size on $100k (E41, E43) | `python -m backtest.drift_size` |
+| Drift on pas (E45) | `python -m backtest.pas_drift <pas recordings> <shadow logs>` |
+| Funding carry (E46) | `python -m backtest.carry_study` |
 
 Run from the repository root with the virtual environment's Python. The
 live-phase evaluation is pre-registered in REPORT_NOTES E42.

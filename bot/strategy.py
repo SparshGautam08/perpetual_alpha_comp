@@ -12,7 +12,7 @@ import pandas as pd
 from backtest.strategies import ewma_cov, risk_parity
 
 from . import config
-from .market import mainnet_hourly_returns
+from .market import mainnet_hourly_returns, post
 from .mlsignal import latest_predictions
 
 log = logging.getLogger("bot")
@@ -145,3 +145,64 @@ class Drift:
         else:
             entries.pop(coin, None)
         self.state.set(drift_entries=entries)
+
+
+class Carry:
+    """Funding carry, LOCKED rule from REPORT_NOTES E46 (Oct 21).
+
+    On pas, funding has been one-sided for days (longs paid ~100%/yr on
+    SP500). Hold CARRY_COIN on the side that receives funding:
+    - signal = mean of the last CARRY_LOOKBACK_H settled hourly funding
+      rates, annualized in % (+ = longs pay);
+    - flat: go long if signal <= -ENTER, short if signal >= +ENTER;
+    - long: exit if signal > -EXIT; short: exit if signal < +EXIT.
+    The size is fixed at entry (CARRY_USD at the oracle) so there is no
+    churn; checked once an hour. Do not change without logging first."""
+    name = "carry_v1"
+    MIN_HOURS = 12           # fewer settled rates than this: keep the current side
+
+    def __init__(self, state):
+        self.state = state
+
+    @staticmethod
+    def signal(now_s: float) -> tuple[float | None, int]:
+        start = int((now_s - config.CARRY_LOOKBACK_H * 3600) * 1000)
+        h = post(config.BASE_URL, {"type": "fundingHistory",
+                                   "coin": f"{config.DEX}:{config.CARRY_COIN}", "startTime": start})
+        rates = [float(x["fundingRate"]) for x in h][-config.CARRY_LOOKBACK_H:]
+        if not rates:
+            return None, 0
+        return sum(rates) / len(rates) * 8760 * 100, len(rates)
+
+    @staticmethod
+    def decide(side: int, sig: float | None, n: int) -> int:
+        """New side (+1 long, -1 short, 0 flat) from the current side and signal."""
+        if sig is None or n < Carry.MIN_HOURS:
+            return side
+        enter, exit_ = config.CARRY_ENTER_PCT, config.CARRY_EXIT_PCT
+        if side == 0:
+            return 1 if sig <= -enter else (-1 if sig >= enter else 0)
+        if side > 0:
+            return 0 if sig > -exit_ else 1
+        return 0 if sig < exit_ else -1
+
+    def update(self, quotes, now_s: float) -> tuple[dict, bool]:
+        """Hourly: returns ({coin: target units}, changed?)."""
+        units = dict(self.state.get("carry_target_units", {}))
+        hour = int(now_s // 3600)
+        if config.CARRY_USD <= 0 or self.state.get("carry_hour") == hour:
+            return units, False
+        q = quotes.get(config.CARRY_COIN)
+        if q is None:
+            return units, False
+        sig, n = self.signal(now_s)
+        side = int(self.state.get("carry_side", 0))
+        new = self.decide(side, sig, n)
+        self.state.set(carry_hour=hour)
+        log.info(f"CARRY {config.CARRY_COIN}: funding last {n} h {sig if sig is None else round(sig, 1)} %/yr, "
+                 f"side {side:+d} -> {new:+d}")
+        if new == side:
+            return units, False
+        units = {config.CARRY_COIN: new * config.CARRY_USD / q.oracle} if new else {}
+        self.state.set(carry_side=new, carry_target_units=units)
+        return units, True

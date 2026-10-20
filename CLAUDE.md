@@ -255,6 +255,11 @@
 - ML filter ON for the scored phase (DRIFT_ML_FILTER=yes in ~/run_bot.sh,
   Oct 18; E39). Check its effect after >= 20 pas drift entries (bot.log
   "ML pred" entries vs "ML filter: skip"); turn off if it hurts.
+- Funding carry (E46, bot/strategy.py Carry): long pas SP500 $50k while
+  the last 24 h of funding pays longs >= 30%/yr, exit below 15%/yr.
+  Off unless CARRY_USD is set (deploy: `export CARRY_USD=50000` in
+  ~/run_bot.sh + restart). Log lines "CARRY ..." hourly; ntfy alert on
+  every entry/exit. Kill switch / loss stop now retry until flat.
 - Drift: at most 4 positions at once (DRIFT_MAX_OPEN, default 4 = the
   backtest max; best edges first), so at most $100k gross even if many pas
   markets sit off the oracle together.
