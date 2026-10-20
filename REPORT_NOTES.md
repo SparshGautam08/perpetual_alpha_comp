@@ -1227,6 +1227,50 @@ visible at 15 s sampling. Drift as designed will trade rarely on pas and
 cannot carry the competition's return; it stays on (cheap, risk-capped)
 while other sources of return are evaluated.
 
+## E46. Funding carry on pas (Oct 21): study, and the rule LOCKED before deploying
+**Observation:** pas funding since the start (Oct 19 12:00 -> Oct 21 00:00
+UTC, %/yr, + = longs pay): SP500 -102, BTC -69, HYPE -67, ETH -64, USDEUR
+-18, EWJ -12, EWY +4, BRENT +5, GOLD +5, USDJPY +34. On par the same signs
+held for the week before the switch (SP500 -60 to -129%/yr every day from
+Oct 12; crypto negative from Oct 13; USDJPY +24 to +83 from Oct 12). pas's
+books sit slightly below the oracle (E45 scans), so longs are paid.
+**Study:** `python -m backtest.carry_study`. Price risk from real mainnet
+history (Apr 18 -> Oct 5, 156 windows of 16 days, price drift REMOVED so
+no credit for the bull run); funding assumed constant at x1 / x0.5 / x0 /
+x-0.5 of the pas average (persistence cannot be backtested on 36 h);
+costs 30 bp round trip; official Q (E43). Daily vol: SP500 0.63%, USDJPY
+0.39%, BTC 1.97%; corr SP500-EWY 0.68 (hedge ratio 0.12).
+**Results (median R / P(loss) / mean Q):**
+
+| portfolio | funding x1 | x0.5 | x0 | x-0.5 |
+|---|---|---|---|---|
+| SP500 long $25k | +0.95% / 1% / 0.22 | +0.39% / 15% / 0.15 | -0.17% / 60% / 0.10 | -0.73% / 88% / 0.08 |
+| SP500 long $50k | +1.91% / 1% / 0.28 | +0.78% / 15% / 0.18 | -0.34% / 60% / 0.11 | -1.45% / 88% / 0.07 |
+| SP500 long $100k | +3.85% / 1% / 0.35 | +1.56% / 15% / 0.21 | -0.69% / 60% / 0.11 | -2.90% / 89% / 0.05 |
+| SP500+EWY hedge $50k | +2.11% / 0% / 0.30 | +0.97% / 12% / 0.19 | -0.16% / 60% / 0.11 | -1.28% / 90% / 0.07 |
+| mean-variance basket, 0.5%/day | +3.19% / 1% / 0.33 | +1.19% / 18% / 0.20 | -0.78% / 68% / 0.10 | -2.71% / 85% / 0.06 |
+
+(flat: Q = 0.10)
+**Learned:** everything hinges on funding persisting: at x1 or x0.5 carry
+beats flat clearly; at x0 it costs ~the round trip; a flip loses. SP500 is
+the best single market (highest carry per unit of volatility). The EWY hedge
+helps little and EWY's mark is distorted by stale orders (E40), which
+matters because scores use the MARK; the basket adds complexity (it shorts
+ETH/HYPE and pays their funding) for no gain over SP500 alone.
+**Rule (LOCKED, Oct 21, before deployment; off until the team switches it
+on, logged here first per E42):**
+- Market: pas SP500 only. Side: the one receiving funding.
+- Signal: average of the last 24 settled hourly funding rates on pas.
+  Enter (long) when it is <= -30%/yr (longs receive >= 30%/yr, ~4x the
+  round-trip cost over the remaining days); exit when it is > -15%/yr
+  (hysteresis). Mirror rule for a short if it turns >= +30%/yr.
+- Size: $50,000 notional (0.5x equity). Checked hourly; trades only on a
+  signal change (no daily churn).
+- Existing limits stay: 2% daily loss stop, kill switch, drift unchanged.
+- Evaluation (adds to E42): carry P&L split into funding received vs price
+  move; criterion funding received > price + costs at the end, reported
+  with the funding regime's duration.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
