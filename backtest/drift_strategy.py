@@ -218,12 +218,18 @@ GRID_V2 = {"entry_edge_bp": [15, 20, 30, 40], "exit_cost_bp": [5, 10, 15],
 
 
 def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
-                need_funding, flip=False, stop_bp=None, pred=None) -> list[dict]:
+                need_funding, flip=False, stop_bp=None, pred=None,
+                block_sell=None, block_buy=None, mark_open_at_end=False) -> list[dict]:
     """Enter when a $NOTIONAL fill is >= entry_edge_bp better than the
     oracle (sell above it / buy below it); exit when closing would cost at
     most exit_cost_bp vs the oracle, or after max_hold_h.
     pred (E39): optional predicted oracle move per row (bp); entries then
-    use the edge adjusted by it (short: sell_edge - pred, long: buy_edge + pred)."""
+    use the edge adjusted by it (short: sell_edge - pred, long: buy_edge + pred).
+    block_sell / block_buy (E45): optional bool per row; True forbids that
+    entry side there (e.g. right after an aggressive sweep in that direction).
+    mark_open_at_end (E45): a position that cannot be closed at a segment's
+    end (book too thin for the exit) is closed at the oracle there instead of
+    being dropped (the default keeps earlier results unchanged)."""
     t = g["time"].to_numpy()
     hour = g["time"].dt.floor("h").to_numpy()
     o = g["oraclePx"].to_numpy()
@@ -248,7 +254,9 @@ def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
             if cheap or old or stopped or last_in_seg:
                 px = sell_px[i] if pos["side"] > 0 else buy_px[i]
                 if np.isnan(px):
-                    continue
+                    if not (mark_open_at_end and last_in_seg):
+                        continue
+                    px = o[i]                        # unclosable at the end: mark at the oracle
                 s, q = pos["side"], pos["units"]
                 trades.append({
                     "t0": pos["t0"], "t1": t[i], "side": s,
@@ -270,6 +278,9 @@ def simulate_v2(g, buy_px, sell_px, entry_edge_bp, exit_cost_bp, max_hold_h,
         elif buy_edge[i] + p_i >= entry_edge_bp:
             side = 1
         if side == 0:
+            continue
+        if (side < 0 and block_sell is not None and block_sell[i]) or \
+                (side > 0 and block_buy is not None and block_buy[i]):
             continue
         if need_funding and np.sign(f[i]) != -side:   # shorts paid when f > 0
             continue

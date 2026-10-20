@@ -1190,6 +1190,29 @@ right after a sweep (e.g. a large aggressive volume or mid jump in the last
 ~10 s), since such gaps are likely informed. To test on the pas recorder
 data once there are more entries.
 
+## E45. Drift on pas from our own recordings -- LOCKED before any result (Oct 20)
+**Why:** live drift traded once in ~35 h on pas (E44); the par backtest
+expected ~10/day. Measure pas itself before changing anything.
+**Method:** `python -m backtest.pas_drift ~/data_pas ~/shadow` (bot VM):
+the pas recorder's book (l2_) and oracle (ctxws_) sampled every 15 s like
+the live bot; drift v2b through the same simulate_v2 as every earlier
+drift test; ML predictions from the shadow log (pas since Oct 18 14:16
+UTC); "sweep" = aggressive notional by OTHER accounts in the last 10 s from
+trades_. Also reports how often a $25k fill is >= 20/25/30/40 bp better
+than the oracle, per market.
+**Grid (24 settings):** entry 20/25/30/40 bp x ML filter off/on x sweep
+filter off/$5k/$20k (no entry in the direction of a recent sweep).
+**Locked rule:** DESIGN = Oct 19 12:00 -> Oct 20 12:00 UTC; TEST = after
+Oct 20 12:00 UTC. Pick: among settings with >= 5 design trades, the
+highest design net. Adopt live only if its TEST net > 0 AND >= the live
+setting's TEST net (30 bp, ML on, no sweep filter); otherwise keep the
+live setting. Any adoption is logged here before deploying (E42 rule).
+**Code checks (par data, Oct 8-9, test dates only):** runs end to end;
+with no sweeps/predictions in that data all filter variants match, as
+expected. Added `mark_open_at_end` to simulate_v2 (off by default, so E13-
+E41 are unchanged; E41 still 69 trades): a trade the recorded book cannot
+close at the end of the data is closed at the oracle instead of dropped.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
