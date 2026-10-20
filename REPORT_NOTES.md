@@ -1190,7 +1190,7 @@ right after a sweep (e.g. a large aggressive volume or mid jump in the last
 ~10 s), since such gaps are likely informed. To test on the pas recorder
 data once there are more entries.
 
-## E45. Drift on pas from our own recordings -- LOCKED before any result (Oct 20)
+## E45. Drift on pas from our own recordings (Oct 20): almost no opportunities
 **Why:** live drift traded once in ~35 h on pas (E44); the par backtest
 expected ~10/day. Measure pas itself before changing anything.
 **Method:** `python -m backtest.pas_drift ~/data_pas ~/shadow` (bot VM):
@@ -1212,6 +1212,20 @@ with no sweeps/predictions in that data all filter variants match, as
 expected. Added `mark_open_at_end` to simulate_v2 (off by default, so E13-
 E41 are unchanged; E41 still 69 trades): a trade the recorded book cannot
 close at the end of the data is closed at the oracle instead of dropped.
+**Result (bot VM, pas Oct 19 12:00 -> Oct 20 23:24 UTC, 15 s checks, ML
+predictions on 100% of checks):** share of checks with a $25k fill >= 20 /
+25 / 30 / 40 bp better than the oracle: 0.0% in every market except SP500
+(1.4% at >= 20 bp, 0% at >= 25). Simulated drift: 20 bp: 2 design trades
+(+$11) and 1 test trade (+$55); 25, 30 and 40 bp: zero trades; ML and
+sweep filters change nothing at these counts. **Locked rule: no setting
+has >= 5 design trades -> keep the live setting.**
+**Learned:** on pas the market makers keep $25k fills within ~10-15 bp of
+the oracle essentially all the time; the par-era gaps (EWJ/BRENT/ETH/BTC,
+E13-E27) do not exist here. The live BRENT trade (E44) came from a sweep
+lasting a few seconds, between the recorder's ~5 s book updates and not
+visible at 15 s sampling. Drift as designed will trade rarely on pas and
+cannot carry the competition's return; it stays on (cheap, risk-capped)
+while other sources of return are evaluated.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
