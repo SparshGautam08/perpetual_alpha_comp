@@ -1292,7 +1292,7 @@ Oct 20 ~23:40 UTC (6:40 PM CT) to run carry live at CARRY_USD=50000 with
 the locked thresholds; live from the bot restart that follows. Results
 are reported separately before / after this point.
 
-## E47. Basis-adjusted drift (Oct 22): built, OFF, decision pending pas evidence
+## E47. Basis-adjusted drift (Oct 22): adopted by its pre-set rule
 **Incident:** Oct 21 19:51 UTC drift bought $25k pas SP500 (book > 30 bp
 below the oracle) on top of the $50k carry long. pas SP500's book sits ~20
 bp below the oracle for days (the discount that pays carry, E46), so the
@@ -1315,6 +1315,22 @@ backtest.pas_drift ~/data_pas ~/shadow`, section "E47"), basis-adjusted
 30 bp has net >= plain 30 bp AND does not take the Oct 21 SP500 trade.
 Otherwise keep plain drift and consider the narrower fix (no drift entries
 in the carry coin).
+**Result (bot VM, pas Oct 19 12:00 -> Oct 22 19:32 UTC, ML on):** share of
+checks with a $25k fill >= 30 bp better than the oracle: SP500 0.2% (>= 20
+bp: 4.3%), every other market 0.0%. Plain (oracle reference): 30 bp: 1
+trade, -$95.1 (SP500 long Oct 21 23:51, max-hold exit; the live trade was
+Oct 21 19:51); 20 bp: 7 trades, +$290.9 (excl. oracle moves -$196.3).
+Basis-adjusted: 0 trades at 20 and 30 bp (net $0). E45's locked grid on the
+same data: still no setting with >= 5 design trades.
+**Rule applied:** basis-adjusted net ($0) >= plain ($-95.1) AND it does not
+take the SP500 trade -> ADOPT (DRIFT_BASIS=yes). Logged here before
+deployment (E42).
+**Learned:** on pas every drift signal so far came from SP500's standing
+discount, not from transient mispricings; measured against the usual level,
+pas has had no drift opportunities at all. Drift becomes a dormant
+safety net (it still trades a genuine dislocation); the competition's
+return comes from carry (E46). Caveats: 3.3 days of data; the par evidence
+(above) shows the adjustment can skip profitable long-lasting gaps.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp

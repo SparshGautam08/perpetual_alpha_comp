@@ -260,6 +260,10 @@
   Off unless CARRY_USD is set (deploy: `export CARRY_USD=50000` in
   ~/run_bot.sh + restart). Log lines "CARRY ..." hourly; ntfy alert on
   every entry/exit. Kill switch / loss stop now retry until flat.
+- Drift basis adjustment ON from Oct 22 (E47, DRIFT_BASIS=yes in
+  ~/run_bot.sh): gaps measured vs each market's usual premium (6 h median),
+  no drift entries for 30 min after a restart. On pas this leaves drift
+  nearly dormant; carry is the main strategy.
 - Drift: at most 4 positions at once (DRIFT_MAX_OPEN, default 4 = the
   backtest max; best edges first), so at most $100k gross even if many pas
   markets sit off the oracle together.
