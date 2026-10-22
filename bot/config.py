@@ -40,6 +40,17 @@ MAX_WEIGHT = _env("MAX_WEIGHT", 0.30, float)       # per-market |weight| cap
 DAILY_LOSS_STOP = _env("DAILY_LOSS_STOP", 0.02, float)  # flatten at -2% on the day
 MAX_SPREAD_BP = _env("MAX_SPREAD_BP", 100, float)  # skip a market if book looks broken
 
+# --- Drift: basis-adjusted gaps (REPORT_NOTES E47) ---
+# yes = measure drift's gaps against each market's USUAL level vs the oracle
+# (median of the book mid's premium over the last DRIFT_BASIS_H hours,
+# sampled once a minute), not against the oracle itself. On pas the books sit
+# ~20 bp below the oracle for days (the discount that pays carry); drift took
+# that as a gap and held it 12 h (Oct 21-22, -$276). No new drift entries in
+# a market until DRIFT_BASIS_MIN minutes of samples exist (after a restart).
+DRIFT_BASIS = _env("DRIFT_BASIS", "no").lower() == "yes"
+DRIFT_BASIS_H = _env("DRIFT_BASIS_H", 6.0, float)
+DRIFT_BASIS_MIN = _env("DRIFT_BASIS_MIN", 30, int)
+
 # --- Funding carry (REPORT_NOTES E46, locked rule) ---
 # Hold CARRY_COIN on the side that RECEIVES funding: enter when the average of
 # the last CARRY_LOOKBACK_H settled hourly rates pays that side >= ENTER %/yr,

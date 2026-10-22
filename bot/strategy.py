@@ -82,10 +82,30 @@ class Drift:
     def __init__(self, state):
         self.state = state          # persists entry times across restarts
 
+    def update_basis(self, quotes, now_s: float) -> dict[str, tuple[float, int]]:
+        """E47: once a minute, record each market's book-mid premium vs the oracle
+        (bp); return {coin: (median over the last DRIFT_BASIS_H hours, samples)}."""
+        hist = {c: list(v) for c, v in self.state.get("drift_basis", {}).items()}
+        minute, keep = int(now_s // 60), int(config.DRIFT_BASIS_H * 60)
+        changed = False
+        for coin in self.MARKETS:
+            q = quotes.get(coin)
+            if q is None or not q.ok():
+                continue
+            h = hist.setdefault(coin, [])
+            if not h or h[-1][0] != minute:
+                h.append([minute, round(((q.bid + q.ask) / 2 / q.oracle - 1) * 1e4, 2)])
+                changed = True
+            hist[coin] = [x for x in h if x[0] > minute - keep]
+        if changed:
+            self.state.set(drift_basis=hist)
+        return {c: (float(np.median([x[1] for x in h])), len(h)) for c, h in hist.items() if h}
+
     def tick(self, quotes, positions: dict[str, float], now_s: float) -> dict[str, tuple]:
         """Returns {coin: (target_usd, reason)} for markets that should trade now."""
         entries = self.state.get("drift_entries", {})
         orders = {}
+        basis = self.update_basis(quotes, now_s) if config.DRIFT_BASIS else {}
         # ML Model 1's predicted 15 s oracle move (E39), read from shadow mode.
         # Always logged with entries (for the live check); used only if ML_FILTER.
         preds = latest_predictions(now_s)
@@ -95,13 +115,18 @@ class Drift:
             if q is None or not q.ok():
                 continue
             held = positions.get(coin, 0.0)
+            # Reference price: the oracle, or (E47) the oracle shifted by the
+            # market's usual premium, so a standing discount is not a "gap".
+            b, nb = basis.get(coin, (0.0, 0))
+            warm = nb >= config.DRIFT_BASIS_MIN
+            ref = q.oracle * (1 + (b if config.DRIFT_BASIS and (warm or held) and nb else 0.0) / 1e4)
             if held != 0:
                 usd = abs(held) * q.oracle
                 # Short closes by buying, long by selling; cost vs oracle in bp.
                 px = fill_price(q.asks if held < 0 else q.bids, usd)
                 if px is None:
                     continue
-                cost = (px / q.oracle - 1) * 1e4 * (1 if held < 0 else -1)
+                cost = (px / ref - 1) * 1e4 * (1 if held < 0 else -1)
                 e = entries.get(coin)
                 too_old = e is not None and now_s - e["t"] >= self.MAX_HOLD_H * 3600
                 stopped = (e is not None and e.get("o") and
@@ -111,10 +136,13 @@ class Drift:
                            "STOP" if stopped else "max hold")
                     orders[coin] = (0.0, f"exit ({why}), close cost {cost:+.1f} bp")
                 continue
+            if config.DRIFT_BASIS and not warm:
+                continue                 # usual premium not known yet (restart warm-up)
             sell = fill_price(q.bids, self.NOTIONAL)
             buy = fill_price(q.asks, self.NOTIONAL)
-            sell_edge = (sell / q.oracle - 1) * 1e4 if sell else -1e9
-            buy_edge = (1 - buy / q.oracle) * 1e4 if buy else -1e9
+            sell_edge = (sell / ref - 1) * 1e4 if sell else -1e9
+            buy_edge = (1 - buy / ref) * 1e4 if buy else -1e9
+            vs = f"usual level ({b:+.1f} bp vs oracle)" if config.DRIFT_BASIS else "oracle"
             p = preds.get(coin)
             # E39 rule: a predicted oracle rise eats a short's edge and adds to a long's.
             adj = p if (config.ML_FILTER and p is not None) else 0.0
@@ -122,10 +150,10 @@ class Drift:
                   if p is not None else ", ML pred n/a")
             if sell_edge - adj >= self.ENTRY_EDGE_BP:
                 candidates.append((sell_edge - adj, coin, (-self.NOTIONAL, f"entry: sell ${self.NOTIONAL:,.0f} fills "
-                                   f"{sell_edge:+.1f} bp vs oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")))
+                                   f"{sell_edge:+.1f} bp vs {vs}, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")))
             elif buy_edge + adj >= self.ENTRY_EDGE_BP:
                 candidates.append((buy_edge + adj, coin, (self.NOTIONAL, f"entry: buy ${self.NOTIONAL:,.0f} fills "
-                                   f"{buy_edge:+.1f} bp under oracle, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")))
+                                   f"{buy_edge:+.1f} bp under {vs}, funding {q.funding * 8760 * 100:+.0f}%/yr{ml}")))
             elif config.ML_FILTER and p is not None and max(sell_edge, buy_edge) >= self.ENTRY_EDGE_BP:
                 log.info(f"ML filter: skip {coin} entry (sell {sell_edge:+.1f} / buy {buy_edge:+.1f} bp, "
                          f"ML pred {p:+.1f} bp)")

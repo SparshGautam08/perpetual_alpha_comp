@@ -108,10 +108,23 @@ def add_ml(df, shadow_folder):
     return df
 
 
-def run(df, entry, ml, sweep):
+def with_basis(g, hours=6.0, warm_min=30):
+    """E47: reference = oracle x (1 + rolling median of the mid's premium over
+    the last `hours`); rows with < warm_min minutes of history can't enter."""
+    prem = ((g.bid1_px + g.ask1_px) / 2 / g.oraclePx - 1) * 1e4
+    win = int(hours * 3600 / CHECK_S)
+    med = prem.rolling(win, min_periods=1).median()
+    warm = np.arange(len(g)) >= warm_min * 60 / CHECK_S
+    return g.assign(oraclePx=g.oraclePx * (1 + med / 1e4)), ~warm
+
+
+def run(df, entry, ml, sweep, basis=False):
     out = []
     for coin, g in df.groupby("coin"):
         g = g.reset_index(drop=True)
+        cold = None
+        if basis:
+            g, cold = with_basis(g)
         buy_px, sell_px = fill_prices(g, NOTIONAL)
         kw = {}
         if ml:
@@ -119,6 +132,9 @@ def run(df, entry, ml, sweep):
         if sweep:
             kw["block_sell"] = (g.sweep_buy >= sweep).to_numpy()
             kw["block_buy"] = (g.sweep_sell >= sweep).to_numpy()
+        if cold is not None:
+            kw["block_sell"] = kw.get("block_sell", np.zeros(len(g), bool)) | cold
+            kw["block_buy"] = kw.get("block_buy", np.zeros(len(g), bool)) | cold
         for t in simulate_v2(g, buy_px, sell_px, entry_edge_bp=entry, **BASE, **kw):
             out.append({"coin": coin} | t)
     return pd.DataFrame(out)
@@ -171,6 +187,16 @@ def main():
         print(f"\nLOCKED RULE: design pick = entry {best.entry_bp} bp, ML {best.ml}, sweep ${best['sweep_$']:,.0f} "
               f"(design net ${best.D_net:,.0f}); test net ${best.T_net:,.0f} vs live setting ${lt:,.0f} -> "
               f"{'ADOPT' if adopt else 'KEEP the live setting'}")
+    print("\nE47: live setting (30 bp, ML on) on ALL pas data, oracle vs basis-adjusted reference:")
+    rows = []
+    for basis in (False, True):
+        for entry in (20, 30):
+            tr_b = run(df, entry, True, None, basis=basis)
+            rows.append({"reference": "usual level" if basis else "oracle", "entry_bp": entry, **summ(tr_b)})
+            if basis and entry == 30 and len(tr_b):
+                print(tr_b.assign(t0=pd.to_datetime(tr_b.t0).dt.strftime("%m-%d %H:%M"))[
+                    ["coin", "t0", "side", "net", "why"]].to_string(index=False))
+    print(pd.DataFrame(rows).to_string(index=False))
     tr = trades[LIVE]
     if len(tr):
         print("\nLive setting's simulated trades:")

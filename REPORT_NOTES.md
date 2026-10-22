@@ -1292,6 +1292,30 @@ Oct 20 ~23:40 UTC (6:40 PM CT) to run carry live at CARRY_USD=50000 with
 the locked thresholds; live from the bot restart that follows. Results
 are reported separately before / after this point.
 
+## E47. Basis-adjusted drift (Oct 22): built, OFF, decision pending pas evidence
+**Incident:** Oct 21 19:51 UTC drift bought $25k pas SP500 (book > 30 bp
+below the oracle) on top of the $50k carry long. pas SP500's book sits ~20
+bp below the oracle for days (the discount that pays carry, E46), so the
+"gap" never closed, the exit (close cost <= 10 bp vs oracle) never came,
+and drift sold at its 12 h limit (Oct 22 07:51) after SP500 fell ~1.1%:
+-$276 incl. fees (fills: 3.222 SP500 @ ~7737.7 -> @ ~7652.9).
+**Built:** DRIFT_BASIS=yes measures entries and exits against the oracle
+shifted by the market's usual premium (median of the book mid vs oracle
+over the last 6 h, sampled once a minute, kept in state across restarts);
+no entries until 30 min of samples. Off by default. Tests (unit): learns
+-20 bp; no buy at -35 bp (15 beyond usual); buys at -55 bp; a long exits
+when the book is back at its usual level; no entries after a restart.
+**Evidence so far (par recordings Oct 8-9, code check):** live setting
+(30 bp, ML on) plain: 19 trades, +$1,073; basis-adjusted: 19 trades,
++$101 (20 bp: +$458 vs -$527). On par the long-lasting gaps (EWJ 135 bp)
+did close and paid; the adjustment learns them as "usual" and skips them.
+So it is NOT obviously better. Decision rule (fixed now): adopt only if,
+on the pas recordings Oct 19 12:00 UTC -> now (`python -m
+backtest.pas_drift ~/data_pas ~/shadow`, section "E47"), basis-adjusted
+30 bp has net >= plain 30 bp AND does not take the Oct 21 SP500 trade.
+Otherwise keep plain drift and consider the narrower fix (no drift entries
+in the carry coin).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
