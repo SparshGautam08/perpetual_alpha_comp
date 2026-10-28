@@ -1332,6 +1332,37 @@ safety net (it still trades a genuine dislocation); the competition's
 return comes from carry (E46). Caveats: 3.3 days of data; the par evidence
 (above) shows the adjustment can skip profitable long-lasting gaps.
 
+## E48. Mid-competition check of carry size (Oct 28): keep $50k
+**Status (Oct 28 19:52 UTC):** equity at mark $100,671 (+0.67%), SAPS #16
+of 38, Q 0.169 (12:00 UTC sample). Carry has received $1,010 of funding;
+the SP500 position is about flat on price.
+**pas funding, %/yr (+ = longs pay), last 24 h / 3 days / since Oct 19:**
+SP500 -75.6 / -89.7 / -93.1; BTC -57.2 / -77.7 / -76.2; ETH -52.0 / -73.3 /
+-71.3; HYPE -31.2 / -61.8 / -63.7; USDJPY +15.7 / +17.6 / +39.7; others
+within +-22. Still one-sided, softer in the last 24 h.
+**Question:** raise carry from $50k to $75k or $100k for the last 9 days?
+**Method (ad hoc script, same pieces as E46):** the 9 days so far are taken
+from the leaderboard (R +0.67%, daily std 0.273%); the remaining 9 days are
+every 9-day window of SP500's daily mainnet returns (Apr 18 -> Oct 5, drift
+removed) plus funding at x1 / x0.5 / x0 of the 3-day average (-89.7%/yr),
+with a cost of 15 bp on any size change. Final Q per window (official
+formula):
+
+| SP500 $ | funding x1: Q mean (p10) | x0.5 | x0 | P(R<0), x0.5 |
+|---|---|---|---|---|
+| 0 (exit now) | 0.160 (0.160) | 0.160 | 0.160 | 0% |
+| 50k (now) | 0.258 (0.163) | 0.208 (0.095) | 0.158 (0.070) | 6% |
+| 75k | 0.279 (0.151) | 0.215 (0.069) | 0.153 (0.060) | 13% |
+| 100k | 0.293 (0.140) | 0.220 (0.062) | 0.149 (0.052) | 17% |
+
+**Decision: keep $50k.** Doubling adds at most +0.035 Q (+0.028 score) if
+funding holds, less if it halves, and makes the bad tail worse in every
+case (p10 and P(loss)). Funding is fading (24 h well below the 3-day
+average), so we don't add risk now. Crypto carry was not added: its
+funding is lower and its price volatility 2-3x SP500's, so it pays less
+per unit of risk. The 20% jury score (J) is now the bigger lever: going
+from J 0.5 to 0.8 adds +0.06 to the score.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
