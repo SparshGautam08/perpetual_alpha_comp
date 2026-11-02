@@ -1376,7 +1376,14 @@ from J 0.5 to 0.8 adds +0.06 to the score.
   wallet bot2 (0x98b0...35E3, valid to Nov 13 18:21 UTC; both listed by
   extraAgents on Nov 2). The live broker now logs its signer's public
   address at startup, so the switch can be checked in bot.log. No strategy
-  change.
+  change. Done Nov 2 16:00 UTC: bot.log shows "live signer (API wallet)
+  0x98b0525EE675CC9F1Bf4Da5ae628Af49d11735E3"; backup ~/run_bot.sh.bak5.
+- **Exits:** the USDEUR long closed Nov 2 02:00 UTC (-$18 price, -$45
+  fees). Carry exited by its rule Nov 2 15:00 UTC (24 h funding -12.4%/yr
+  < 15): SP500 sold at ~7607.6, -$764 on price, -$44 exit fee. Carry over
+  its life (Oct 21 -> Nov 2): about +$1,210 funding, -$764 price, ~-$89
+  fees = about +$360. Flat after that; equity $100,113 (+0.11%). Carry
+  re-enters only if the 24 h funding reaches 30%/yr again.
 
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
