@@ -104,6 +104,7 @@ class LiveBroker:
         from hyperliquid.exchange import Exchange
         with open(os.path.expanduser(config.KEY_FILE)) as f:
             wallet = eth_account.Account.from_key(f.read().strip())
+        log.info("live signer (API wallet) %s for team %s on %s", wallet.address, config.TEAM, config.DEX)
         self.ex = Exchange(wallet, config.BASE_URL, account_address=config.TEAM,
                            perp_dexs=[config.DEX])
 

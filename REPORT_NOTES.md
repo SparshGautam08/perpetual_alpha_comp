@@ -1363,6 +1363,21 @@ funding is lower and its price volatility 2-3x SP500's, so it pays less
 per unit of risk. The 20% jury score (J) is now the bigger lever: going
 from J 0.5 to 0.8 adds +0.06 to the score.
 
+## E49. Operations log, Oct 30 -> Nov 1
+- **Drift on USDEUR** (pas book swung up to ~+200 bp vs the oracle Oct
+  29-30): ETH long +$49; USDEUR shorts -$64, -$18, +$135; USDEUR long
+  (Oct 30 13:58 -> 17:xx UTC) -$117; all net of fees. Another $25k USDEUR
+  long opened Nov 1 22:00 UTC.
+- **SP500 funding faded:** hourly rates ~0%/yr on the evening of Nov 1,
+  24 h average -20.1%/yr at Nov 2 00:53 UTC (exit rule: below 15%/yr, E46).
+  Carry has received $1,209 of funding; the position is -$769 on price.
+  The exit is left to the locked rule.
+- **Key switch (bot1 expires Nov 5 01:55 UTC):** the live bot moves to API
+  wallet bot2 (0x98b0...35E3, valid to Nov 13 18:21 UTC; both listed by
+  extraAgents on Nov 2). The live broker now logs its signer's public
+  address at startup, so the switch can be checked in bot.log. No strategy
+  change.
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The
