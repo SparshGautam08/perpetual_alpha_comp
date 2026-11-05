@@ -17,9 +17,10 @@ td { border-bottom: 0.5px solid #bbb; padding: 1.4pt 4pt; vertical-align: top; }
 .cap { font: italic 8pt/1.2 Helvetica, Arial, sans-serif; color: #444; margin: 1pt 0 6pt; }
 img { width: 92%; display: block; margin: 2pt auto 1pt; }
 code { font: 8.4pt Menlo, monospace; }
+a { color: inherit; }
 </style></head><body>
 <h1>From Mispricing to Funding: Evidence-Driven Trading on Perpetual Alpha</h1>
-<div class="byline">Team SAPS · ICAIF 2026 Perpetual Alpha · Code: repository submitted to the jury</div>
+<div class="byline">Team SAPS · ICAIF 2026 Perpetual Alpha · Code and experiment log: <a href="https://github.com/SparshGautam08/perpetual_alpha_comp">github.com/SparshGautam08/perpetual_alpha_comp</a></div>
 
 <p><b>Abstract.</b> We built a live trading system for a HIP-3 perpetuals venue and tested each idea under rules fixed before seeing its test data. Our first strategy, trading order-book dislocations against the oracle, passed locked tests on the practice venue, but those gaps barely existed on the scored venue. Mid-phase we moved to a funding carry under a rule locked before deployment. ML Model 1, a gradient-boosted forecast of the oracle 15 seconds ahead, beat its baseline in every test (live R² 0.358 vs 0.306), yet added little to P&amp;L. Carry earned $1,202 in funding, but a fall of over 3% in SP500 on Nov 5 left the account at about -1.5%. We report the failures in full, including our pre-registered tests that did not pass. This report was submitted before the phase ended on Nov 6 12:00 UTC, so live figures are a snapshot at Nov 5 16:24 UTC.</p>
 
@@ -30,7 +31,7 @@ code { font: 8.4pt Menlo, monospace; }
 
 <h2>2. Data and infrastructure</h2>
 <ul>
-<li><b>Organizers' dataset:</b> hourly mainnet candles, Mar 11 to Oct 5, ten markets (audited in E1; E numbers refer to <code>REPORT_NOTES.md</code>).</li>
+<li><b>Organizers' dataset:</b> hourly mainnet candles, Mar 11 to Oct 5, ten markets (audited in E1; E numbers refer to entries in <code>REPORT_NOTES.md</code> in the repository).</li>
 <li><b>Our recordings of the venues,</b> polled from Oct 5, websocket from Oct 7 (<code>record_ws.py</code>): oracle, mark and funding at about 1 s, full order books, and every trade with its addresses.</li>
 <li><b>Outside data (allowed by the organizers):</b> public Hyperliquid mainnet best bid/ask and oracle for the markets the venue copies, used as live model inputs and for training. No other outside data is used.</li>
 <li><b>Account data:</b> our fills and funding payments, read from the public API.</li>
@@ -113,5 +114,5 @@ code { font: 8.4pt Menlo, monospace; }
 <h2>8. Limitations and lessons</h2>
 <p>Samples are short: 73 hours for the locked drift tests, one 29-hour shadow window, and 10 live drift trades. Seconds overlap in the R² data, so the effective sample is far smaller than the row count. The carry study could not test funding persistence, and it assumed the price risk of a period with 0.63% daily volatility; the Nov 5 fall exceeded five times that. The 2% account loss stop gives little protection to a $50k position, which needs a 4% move to reach it.</p>
 <p>Three lessons. An edge measured on one venue is only a hypothesis on the next; recording the scored venue from Oct 16 let us see that within two days of the start. Carry is pay for bearing risk, not free income, and our single-market position carried all of that risk; a size tied to recent volatility, or a hedge, deserves testing. Finally, forecast accuracy is not profit: our most accurate model mattered less than a simple rule built on the venue's mechanics.</p>
-<p><b>Reproducibility.</b> Every experiment in <code>REPORT_NOTES.md</code> lists its command; the repository README maps them. The live evaluation is <code>python -m backtest.eval_live</code> (public data only, bootstrap seed 42); shadow scoring is <code>python -m backtest.eval_shadow</code>. Recordings are kept outside the repository because of their size. Entries were fully algorithmic. Code and analysis were developed with an AI coding assistant (Claude Code); the team made the decisions and fixed the rules.</p>
+<p><b>Reproducibility.</b> Code: <a href="https://github.com/SparshGautam08/perpetual_alpha_comp">github.com/SparshGautam08/perpetual_alpha_comp</a>. Every experiment in <code>REPORT_NOTES.md</code> lists its command; the README maps them. The live evaluation is <code>python -m backtest.eval_live</code> (public data only, bootstrap seed 42); shadow scoring is <code>python -m backtest.eval_shadow</code>. Recordings are kept outside the repository because of their size. Entries were fully algorithmic. Code and analysis were developed with an AI coding assistant (Claude Code); the team made the decisions and fixed the rules.</p>
 </body></html>
