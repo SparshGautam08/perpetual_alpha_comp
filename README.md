@@ -7,7 +7,7 @@ Nov 6 12:00 UTC on the `pas` exchange (practice ran on `par`), with ten
 markets: BTC, ETH, HYPE, SP500, EWY, EWJ, BRENT, GOLD, USDEUR and USDJPY.
 
 The full research log, with every experiment, result, failure and how to
-reproduce it, is in [REPORT_NOTES.md](REPORT_NOTES.md) (E1 to E42). This
+reproduce it, is in [REPORT_NOTES.md](REPORT_NOTES.md) (E1 to E50). This
 README is the map.
 
 ## What the bot does
@@ -26,7 +26,8 @@ mainnet-vs-oracle premium, oracle staleness and time features (E23).
 Out-of-sample R2 0.32 vs 0.16 for a simple rule (E27); 0.36 vs 0.31 live in
 shadow mode, better in all 10 markets (E35). In the live bot it filters
 drift's entries: a gap the oracle is predicted to close by itself is
-skipped (E39).
+skipped (E39). On `pas`, drift measures gaps against each market's usual
+premium (6 h median) rather than the oracle itself (E47).
 
 **Funding carry (from Oct 21).** On `pas`, funding has been one-sided
 for days (longs paid ~100%/yr on SP500). The bot holds $50k of SP500 on
@@ -52,6 +53,7 @@ mainnet lead signal as a taker strategy (E21), and an ML market maker
 | `bot/maker.py` | ML market maker (paper tests only, E34/E36) |
 | `bot/eligibility.py` | Makes one tiny trade if the bot has not traded by a deadline (>= 1 fill is needed to be ranked) |
 | `backtest/` | Backtester, baselines and one script per experiment (see below) |
+| `report/` | Technical report (`report.html`, `fig1.png`, PDF printed with headless Chrome) |
 | `models/` | Trained ML Model 1 (`oracle_gbm_v1.joblib`), the baseline, and training metadata |
 | `record_ws.py`, `record_market_data.py` | Market data recorders (websocket; 5 s polling) |
 | `check_dex.py`, `balance.py` | Read-only checks: a dex's markets and settings; our balance and positions |
@@ -81,7 +83,7 @@ settings used in the scored phase:
 
 ```bash
 export HL_DEX=pas HL_COLLATERAL=USDP LEVERAGE=0 DRIFT_ENTRY_BP=30 LOOP_SECONDS=15
-export DRIFT_ML_FILTER=yes TRADE_FROM=2026-10-19T12:00:00Z ELIG_TRADE_BY=2026-10-20T20:00:00Z CARRY_USD=50000
+export DRIFT_ML_FILTER=yes TRADE_FROM=2026-10-19T12:00:00Z ELIG_TRADE_BY=2026-10-20T20:00:00Z CARRY_USD=50000 DRIFT_BASIS=yes
 BOT_LIVE=yes HL_API_KEY_FILE=~/keys/<api wallet>.key .venv/bin/python -m bot.main --mode live --strategy combined
 ```
 
@@ -125,6 +127,7 @@ Each experiment in REPORT_NOTES.md lists its command. The main ones:
 | Drift size on $100k (E41, E43) | `python -m backtest.drift_size` |
 | Drift on pas (E45) | `python -m backtest.pas_drift <pas recordings> <shadow logs>` |
 | Funding carry (E46) | `python -m backtest.carry_study` |
+| Live evaluation, public data only (E42, E50) | `python -m backtest.eval_live` |
 
 Run from the repository root with the virtual environment's Python. The
 live-phase evaluation is pre-registered in REPORT_NOTES E42.

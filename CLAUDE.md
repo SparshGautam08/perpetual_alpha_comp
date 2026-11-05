@@ -109,12 +109,11 @@
 - Team wallet (public): 0xC9f1C5a784d2cd5858396299893e71cfe23F4aAf
 - Balance: 1,000,000 USDPR. Unified account mode is ON.
 - API wallet `bot1` approved: 0x20Cb52dfA3C9934f3ef802FF2D988640532E239C,
-  expires ~Nov 5, 2026. WARNING: that is BEFORE the competition ends (Nov
-  6). Before Nov 5, move the main bot to another key (bot2, or a new bot3:
-  max 3 API wallets per account).
+  expires ~Nov 5, 2026. No longer used: the bot moved to bot2 on Nov 2 (max 3 API wallets per
+  account).
 - API wallet `bot2` approved Oct 14: 0x98b0525EE675CC9F1Bf4Da5ae628Af49d11735E3,
-  valid until ~Nov 13, 2026. Key ~/keys/api_wallet_bot2.key (laptop). For
-  the maker process (one key per running process); not yet on the VM.
+  valid until ~Nov 13, 2026. Key ~/keys/api_wallet_bot2.key (laptop and bot
+  VM). Signs the live bot since Nov 2.
 - Bot key file: ~/keys/api_wallet_bot1.key (outside this folder).
   Use via: export HL_API_KEY_FILE=~/keys/api_wallet_bot1.key
 - Max 3 API wallets per account; one key per running process.
@@ -230,7 +229,12 @@
   within 5 min with the new code).
 - Only ONE live bot per account: don't run it on a laptop at the same time.
 
-## Current status (Oct 18) and next steps
+## Current status (Nov 5) and next steps
+- Key: the live bot runs on bot2 since Nov 2 16:00 UTC (valid to Nov 13; bot.log
+  "live signer"). Report: report/report.html -> report/SAPS_report.pdf (headless
+  Chrome), 4 pages max; working copy in the Claude Doc
+  https://claude.ai/artifact/RBYssjxqZXJH2NGpeMmgsA. Live numbers:
+  `python -m backtest.eval_live`. Due Nov 6, after the 12:00 UTC final sample.
 - DONE Sun Oct 18 ~14:15 UTC: live bot on pas (log "WAITING ... equity
   0.00 on pas"; par left flat, 0 orders), shadow on pas (HL_DEX=pas added
   as line 2 of ~/shadow_watchdog.sh, backup .bak; NOTE shadow_2026-10-18.csv
@@ -306,10 +310,7 @@
   "record_ws.py --out" would match it). Oct 16: pas books already quoted
   (9-15 bp spreads), EWY ~90 bp above its oracle.
 - Next: (1) evaluate the ML filter on pas after >= 20 drift entries; (2) watch the
-  first pas trades (Mon Oct 19 from 7 AM CT); (3) move the main bot to bot2
-  before bot1 expires Nov 5 01:55 UTC (= Wed Nov 4 7:55 PM CST), ideally by
-  Nov 1: copy ~/keys/api_wallet_bot2.key to the VM by hand, point
-  HL_API_KEY_FILE in ~/run_bot.sh at it, restart; (4) back up the recorded
+  first pas trades (Mon Oct 19 from 7 AM CT); (3) done Nov 2: main bot moved to bot2; (4) back up the recorded
   data (e.g. a Cloud Storage bucket) before Nov 6; (5) start the report
   (REPORT_NOTES.md has all experiments E1-E39).
 

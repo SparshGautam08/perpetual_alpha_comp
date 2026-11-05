@@ -1385,6 +1385,44 @@ from J 0.5 to 0.8 adds +0.06 to the score.
   fees = about +$360. Flat after that; equity $100,113 (+0.11%). Carry
   re-enters only if the 24 h funding reaches 30%/yr again.
 
+## E50. Live evaluation (E42 spec) and the Nov 5 SP500 fall (Nov 5)
+**Built:** `python -m backtest.eval_live` (the analysis promised in E42):
+fills, funding and the official row, from public data only. Splits carry
+from drift, bootstrap CI for H1 (seed 42), rebuilds equity at each 12:00 UTC
+from fills, funding and hourly prices. Checks: the split adds up to the
+account (fills + funding + open P&L = equity); rebuilt daily std 0.250% vs
+the official 0.247%. Deviations from E42: H3 uses the official mark-based
+numbers (E43 found the score uses mark, not oracle); H2, H4 and H5 need the
+bot VM's data and run after the phase ends, so they can't disturb the live
+bot on its 2 GB VM.
+**What happened:** carry re-entered by its rule Nov 4 19:00 UTC (6.497 SP500,
+~7699) after 24 h funding recovered past 30%/yr. Nov 5 12:00 -> 15:00 UTC
+SP500 fell 3.6% on pas (3.3% on mainnet: a real move, not a venue glitch).
+**At Nov 5 16:24 UTC:** equity ~$98,540 (-1.46%). Official at the 12:00 sample,
+before the fall: #22 of 39, R +0.005%, Q 0.077.
+
+| Sleeve | Funding | Price | Fees | Net |
+|---|---|---|---|---|
+| Carry 1, Oct 20 -> Nov 2 | +1,148.90 | -724.71 | -89.21 | +334.98 |
+| Carry 2, Nov 4 -> open | +53.56 | -1,503.87 | -45.02 | -1,495.33 |
+| Drift, 10 round trips | +190.61 | -151.91 | -337.69 | -298.99 |
+
+**H1 so far:** mean -$29.90 per trip, 95% CI [-$96, +$33], 3 of 10 won: not
+supported. **Correction:** E47's "-$276 incl. fees" for drift's SP500 trade
+left out most of the fees; from its fills it is -$269.68 price, -$44.63 fees,
++$72.14 funding = -$242.17. E49's "about +$360" for carry 1 becomes +$335
+once drift's share is separated.
+**Decision for the last sample (Nov 6 12:00 UTC): no override, the rules stay
+on.** Official formula with one more daily return: final equity $97,000 -> Q
+0.039; $98,000 -> 0.048; $98,520 -> 0.054; $99,500 -> 0.069; $100,000 -> 0.077;
+$100,500 -> 0.139. Flattening now would lock in ~Q 0.053 after costs and give
+up the jump above R = 0; holding risks about 0.015 of Q for a further 1.5%
+account loss, and funding keeps paying. The 2% daily loss stop still applies.
+This is the locked rule, not a view on the market.
+**Learned:** see the report's section 8. The study's price risk (0.63% daily
+vol) did not include a day like this, and an account-level 2% stop does
+little for a $50k position (a 4% move).
+
 ## Correction to E15/E19 (Oct 10)
 E15 attributed the Oct 8 change in par's book (small orders, 0-6 bp
 spreads instead of the fixed ~20 bp ladder) to "other teams arriving". The

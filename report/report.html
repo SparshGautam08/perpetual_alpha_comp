@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>From Mispricing to Funding: Team SAPS</title>
+<style>
+@page { size: letter; margin: 0.7in 0.75in; }
+body { font: 9.6pt/1.32 Georgia, "Times New Roman", serif; color: #111; margin: 0; }
+h1 { font: 700 15.5pt/1.2 Helvetica, Arial, sans-serif; margin: 0 0 3pt; }
+h2 { font: 700 10.5pt/1.2 Helvetica, Arial, sans-serif; margin: 9pt 0 3pt; break-after: avoid; }
+p { margin: 0 0 5pt; }
+.byline { font: 9pt Helvetica, Arial, sans-serif; color: #444; margin-bottom: 6pt; }
+.draft { background: #f9eeda; padding: 3pt 5pt; font: 8.5pt Helvetica, Arial, sans-serif; }
+.formula { text-align: center; margin: 3pt 0 5pt; }
+ul { margin: 0 0 5pt; padding-left: 14pt; } li { margin-bottom: 2pt; }
+table { border-collapse: collapse; width: 100%; font: 8.1pt/1.22 Helvetica, Arial, sans-serif; margin: 3pt 0 1pt; break-inside: avoid; }
+th { text-align: left; border-bottom: 1px solid #111; border-top: 1px solid #111; padding: 1.6pt 4pt; }
+td { border-bottom: 0.5px solid #bbb; padding: 1.4pt 4pt; vertical-align: top; }
+.num td:not(:first-child), .num th:not(:first-child) { text-align: right; white-space: nowrap; }
+.cap { font: italic 8pt/1.2 Helvetica, Arial, sans-serif; color: #444; margin: 1pt 0 6pt; }
+img { width: 92%; display: block; margin: 2pt auto 1pt; }
+code { font: 8.4pt Menlo, monospace; }
+</style></head><body>
+<h1>From Mispricing to Funding: Evidence-Driven Trading on Perpetual Alpha</h1>
+<div class="byline">Team SAPS · ICAIF 2026 Perpetual Alpha · Code: repository submitted to the jury</div>
+
+<p><b>Abstract.</b> We built a live trading system for a HIP-3 perpetuals venue and tested each idea under rules fixed before seeing its test data. Our first strategy, trading order-book dislocations against the oracle, passed locked tests on the practice venue, but those gaps barely existed on the scored venue. Mid-phase we moved to a funding carry under a rule locked before deployment. ML Model 1, a gradient-boosted forecast of the oracle 15 seconds ahead, beat its baseline in every test (live R² 0.358 vs 0.306), yet added little to P&amp;L. Carry earned $1,202 in funding, but a fall of over 3% in SP500 on Nov 5 left the account at about -1.5%. We report the failures in full, including our pre-registered tests that did not pass. This report was submitted before the phase ended on Nov 6 12:00 UTC, so live figures are a snapshot at Nov 5 16:24 UTC.</p>
+
+<h2>1. Problem and scoring</h2>
+<p>Teams trade ten perpetuals (BTC, ETH, HYPE, SP500, EWY, EWJ, BRENT, GOLD, USDEUR, USDJPY) with $100,000 for 18 days, paying 9 bp taker and 3 bp maker fees. The financial score is</p>
+<p class="formula">Q = (max(R, 0) + 0.005) / (|R| + 1.5σ + 0.05)</p>
+<p>where R is the return between daily samples at 12:00 UTC, equity is valued at the mark price, and σ is the daily-return standard deviation times √n. R = 0 gives Q = 0.10 and any loss gives less. So a steady small profit beats a volatile larger one. The overall score is 0.8 Q + 0.2 J, where J is the jury score.</p>
+
+<h2>2. Data and infrastructure</h2>
+<ul>
+<li><b>Organizers' dataset:</b> hourly mainnet candles, Mar 11 to Oct 5, ten markets (audited in E1; E numbers refer to <code>REPORT_NOTES.md</code>).</li>
+<li><b>Our recordings of the venues,</b> polled from Oct 5, websocket from Oct 7 (<code>record_ws.py</code>): oracle, mark and funding at about 1 s, full order books, and every trade with its addresses.</li>
+<li><b>Outside data (allowed by the organizers):</b> public Hyperliquid mainnet best bid/ask and oracle for the markets the venue copies, used as live model inputs and for training. No other outside data is used.</li>
+<li><b>Account data:</b> our fills and funding payments, read from the public API.</li>
+</ul>
+<p>The bot runs 24/7 on a cloud VM with watchdog restarts, phone alerts, a kill switch and a 2% daily loss stop. One setting (<code>HL_DEX</code>) moved it from practice to the scored venue, with separate state files so positions could not carry over.</p>
+
+<h2>3. Method: decide first, then test</h2>
+<p>Each strategy had a design period and a later test period. The rule and the pass criterion were committed to git before the test data existed, so commit times are the proof. Drift tests used net P&amp;L excluding oracle moves, to separate edge from luck. E42 pre-registered the live evaluation before the first scored trade. Table 1 lists the outcomes.</p>
+<table>
+<tr><th>Idea</th><th>Test</th><th>Result</th><th>Decision</th></tr>
+<tr><td>Trend following</td><td>Hourly history, full costs</td><td>Every lookback loses in-sample (best -4.0%)</td><td>Dropped</td></tr>
+<tr><td>Risk parity</td><td>Simulated with drift</td><td>+0.07% per 19 days at 0.25x, daily std tripled</td><td>Off</td></tr>
+<tr><td>Drift v1 (top-of-book gap)</td><td>Locked test, 32 h, 16 trades</td><td>-$443 excl. oracle moves: <b>failed</b></td><td>Replaced</td></tr>
+<tr><td>Drift v2, v2b (gap at the executable $25k price)</td><td>Locked test, 73 h, 18 and 44 trades</td><td>+$1,299 and +$1,835 excl. oracle moves: <b>passed</b></td><td>Live on practice venue</td></tr>
+<tr><td>Mainnet lead as taker signal</td><td>Recorded books, grid</td><td>Forecast accurate, but only moves over ~35 bp pay (8 in 2 days)</td><td>Dropped</td></tr>
+<tr><td>ML market maker</td><td>Paper A/B, 29 h</td><td>+0.7 to +2.0 bp net, s.e. ~1.6; ML no better than simple</td><td>Not run live</td></tr>
+<tr><td>Weekend oracle gaps</td><td>One weekend</td><td>All reopening jumps ≤ 4 bp</td><td>Dropped</td></tr>
+</table>
+<p class="cap">Table 1. What we tested before the scored phase.</p>
+<p>Backtests were also reconciled with live fills (E30). Live drift made +$464 against +$1,117 simulated, and every trade the bot missed was a gap lasting ≤ 5 s. Later backtests therefore use the live 15 s check interval.</p>
+
+<h2>4. ML Model 1: forecasting the oracle</h2>
+<p>Hyperliquid mainnet leads the venue's oracle by 5 to 9 s (E20). We forecast the oracle's next 15 s move with a gradient-boosted tree model (scikit-learn HistGradientBoosting: 300 iterations, learning rate 0.05, 31 leaves). It uses 20 features: the mainnet-vs-oracle premium and its lags, mainnet and oracle returns, volatility, seconds since the oracle last changed, book position, time of day and market. The baseline is OLS on the offset-removed premium.</p>
+<table class="num">
+<tr><th>Evaluation (15 s horizon)</th><th>Baseline R²</th><th>GBM R²</th></tr>
+<tr><td>Walk-forward, 4 blocks, 5-min purge (1.74M rows)</td><td>0.23</td><td>0.36</td></tr>
+<tr><td>Locked out-of-sample test, 73 h</td><td>0.160</td><td>0.324</td></tr>
+<tr><td>Live shadow mode on practice venue, 29 h (1.03M predictions)</td><td>0.306</td><td>0.358</td></tr>
+<tr><td>Live shadow mode on scored venue</td><td>after phase</td><td>after phase</td></tr>
+</table>
+<p class="cap">Table 2. Forecast accuracy. All rows are out of sample. The scored-venue log is scored after the phase, to keep load off the live bot's VM.</p>
+<p>The gain is largest where the simple rule breaks. On weekends in non-crypto markets, baseline R² is -1.03 and GBM 0.36, because staleness features capture slowly updating oracles. Training and live inference share one feature module (<code>bot/features.py</code>), and the model ran in shadow mode, logging predictions without trading, before it touched any order.</p>
+<p><b>Use in trading.</b> Predicted moves are small next to round-trip costs of ~35 bp, so the model cannot trade alone. It filters drift entries: the edge is adjusted by the predicted move, because a gap that the oracle is about to close offers no profit. The locked test passed narrowly (+$1,700 on 38 trades vs +$1,601 on 37), and the oracle-move part of P&amp;L improved from -$204 to +$128. That is weak evidence.</p>
+<p><b>Limits.</b> Ridge regression nearly matches the GBM at 15 s (0.35), so most of the value comes from the features, not the non-linearity. The GBM's margin over the baseline shrank live. A better forecast also did not make the paper maker pay.</p>
+
+<h2>5. The scored venue changed the strategy</h2>
+<p>Drift's edge did not transfer. On <code>pas</code>, a $25k fill at least 30 bp better than the oracle appeared on 0.0% of checks in every market in the first 35 hours (E45); SP500 later reached 0.2%, from its standing discount (E47). The first live trade showed why: another team swept BRENT, the oracle followed within seconds, and the gap was price discovery rather than mispricing (E44).</p>
+<p>Funding was the larger opportunity. Longs in SP500 were paid about 100%/yr, so we studied carry before trading it (E46). Funding history was too short to backtest, so we separated the two risks. Price risk came from 156 historical 16-day windows with the drift removed, and funding was assumed at multiples of the observed level.</p>
+<table class="num">
+<tr><th>SP500 long $50k</th><th>Funding x1</th><th>x0.5</th><th>x0</th><th>Flips (x-0.5)</th></tr>
+<tr><td>Median R</td><td>+1.91%</td><td>+0.78%</td><td>-0.34%</td><td>-1.45%</td></tr>
+<tr><td>P(loss)</td><td>1%</td><td>15%</td><td>60%</td><td>88%</td></tr>
+<tr><td>Mean Q (flat = 0.10)</td><td>0.28</td><td>0.18</td><td>0.11</td><td>0.07</td></tr>
+</table>
+<p class="cap">Table 3. Carry study. Everything depends on funding persisting.</p>
+<p><b>Locked rule:</b> hold $50k of SP500 on the side receiving funding when the last 24 hourly rates average at least 30%/yr, and exit below 15%/yr. We kept SP500 alone because a hedge and a basket added little. Drift then bought SP500's standing discount on top of the carry and lost $242. We fixed this by measuring gaps against each market's 6-hour median premium (E47), adopted under a decision rule fixed before its test. A size check on Oct 28 kept $50k: doubling added at most 0.035 to Q and worsened the bad tail (E48).</p>
+
+<h2>6. Live results</h2>
+<img src="fig1.png" alt="Equity path: funding lifted equity to +0.66%; a 3% SP500 fall took it to about -1.5%">
+<p class="cap">Fig. 1. Rebuilt from public fills, funding and hourly prices (<code>backtest/eval_live.py</code>). Daily std 0.250% vs the official 0.247%.</p>
+<table class="num">
+<tr><th>Sleeve</th><th>Funding</th><th>Price</th><th>Fees</th><th>Net</th></tr>
+<tr><td>Carry 1, Oct 20 to Nov 2</td><td>+$1,149</td><td>-$725</td><td>-$89</td><td><b>+$335</b></td></tr>
+<tr><td>Carry 2, Nov 4 to snapshot (open)</td><td>+$54</td><td>-$1,504</td><td>-$45</td><td><b>-$1,495</b></td></tr>
+<tr><td>Drift, 10 round trips</td><td>+$191</td><td>-$152</td><td>-$338</td><td><b>-$299</b></td></tr>
+<tr><td>Total</td><td>+$1,393</td><td>-$2,380</td><td>-$472</td><td><b>-$1,459</b></td></tr>
+</table>
+<p class="cap">Table 4. P&amp;L attribution from fills, reconciled to the account (equity $98,541 at the snapshot).</p>
+<p>The first carry episode worked as designed and exited by its rule when funding faded. The rule re-entered on Nov 4 as the 24-hour funding average recovered past 30%/yr. On Nov 5, SP500 fell over 3% in three hours, also on mainnet, erasing what funding had paid across the whole phase. We did not override the rule; at the snapshot, flattening would have locked in a loss and given up the jump in Q above R = 0. Official standing at the Nov 5 sample, before the fall: rank 22 of 39, R +0.005%, Q 0.077. If equity held at the snapshot level, the final Q would be about 0.054.</p>
+<table>
+<tr><th>Pre-registered question (E42, E46)</th><th>Result at the snapshot</th><th>Verdict</th></tr>
+<tr><td>H1: drift's mean net per trip &gt; 0</td><td>-$29.90, 95% bootstrap CI [-$96, +$33], 3 wins of 10</td><td><b>Not supported</b></td></tr>
+<tr><td>H2: live vs backtest (descriptive)</td><td>Replay runs after the phase; not in this report</td><td>Pending</td></tr>
+<tr><td>H3: daily std ≤ 0.5%, max drawdown ≤ 3%</td><td>Std 0.247% (official); drawdown -2.1% from the Oct 28 peak</td><td>Passing so far</td></tr>
+<tr><td>H4a: GBM R² &gt; baseline on scored venue</td><td>Scored after the phase; not in this report</td><td>Pending</td></tr>
+<tr><td>H4b: ML filter, taken vs skipped entries</td><td>10 entries taken; skips not tallied; 20 required</td><td>Pending</td></tr>
+<tr><td>H5: heartbeat ≥ 99% of minutes</td><td>Computed from bot.log after the phase</td><td>Pending</td></tr>
+<tr><td>Carry: funding &gt; price + costs</td><td>Episode 1 yes; overall no (+$1,202 vs -$2,363)</td><td><b>Failing</b></td></tr>
+</table>
+<p class="cap">Table 5. The pre-registered evaluation, as far as it could run before submission.</p>
+
+<h2>7. Failures that shaped the system</h2>
+<ul>
+<li><b>Crash on exit (E18).</b> A numpy boolean broke order signing, so exits failed for ~9 hours. Paper mode missed it because it does not sign orders. Tests now exercise the real signing path.</li>
+<li><b>Double exit (E26).</b> A crash before saving state made the bot close a position twice, leaving an orphan that lost ~$1,050. Trade records now come from the exchange's position, not from assumptions about order replies.</li>
+<li><b>Fake maker fills (E36).</b> Websocket replays made up 87% of paper fills. We found this because the fills were dated before the makers started.</li>
+<li><b>Incomplete kill switch (E46).</b> It made one pass and stopped while a position was still open. It now repeats until flat and alerts otherwise.</li>
+</ul>
+
+<h2>8. Limitations and lessons</h2>
+<p>Samples are short: 73 hours for the locked drift tests, one 29-hour shadow window, and 10 live drift trades. Seconds overlap in the R² data, so the effective sample is far smaller than the row count. The carry study could not test funding persistence, and it assumed the price risk of a period with 0.63% daily volatility; the Nov 5 fall exceeded five times that. The 2% account loss stop gives little protection to a $50k position, which needs a 4% move to reach it.</p>
+<p>Three lessons. An edge measured on one venue is only a hypothesis on the next; recording the scored venue from Oct 16 let us see that within two days of the start. Carry is pay for bearing risk, not free income, and our single-market position carried all of that risk; a size tied to recent volatility, or a hedge, deserves testing. Finally, forecast accuracy is not profit: our most accurate model mattered less than a simple rule built on the venue's mechanics.</p>
+<p><b>Reproducibility.</b> Every experiment in <code>REPORT_NOTES.md</code> lists its command; the repository README maps them. The live evaluation is <code>python -m backtest.eval_live</code> (public data only, bootstrap seed 42); shadow scoring is <code>python -m backtest.eval_shadow</code>. Recordings are kept outside the repository because of their size. Entries were fully algorithmic. Code and analysis were developed with an AI coding assistant (Claude Code); the team made the decisions and fixed the rules.</p>
+</body></html>
